@@ -136,83 +136,126 @@ document.getElementById("toggleView").onclick = () => {
 //   السلة — FULL B MODE (سلة كاملة مثل الأصل)
 //--------------------------------------------------
 
-let cart = [];
+/* -------------------------
+   فتح و إغلاق السلة
+-------------------------- */
 
-document.addEventListener('click', e => {
-
-    // إضافة للسلة
-    if (e.target.classList.contains('add-to-cart')) {
-        const name = e.target.dataset.name;
-        const price = Number(e.target.dataset.price);
-
-        let item = cart.find(c => c.name === name);
-
-        if (item) {
-            item.qty++;
-        } else {
-            cart.push({ name, price, qty: 1 });
-        }
-
-        updateCartUI();
-    }
-
-    // تعديل الكمية
-    if (e.target.classList.contains("qty-btn")) {
-        let idx = Number(e.target.dataset.index);
-        let item = cart[idx];
-
-        if (e.target.dataset.op === "plus") item.qty++;
-        if (e.target.dataset.op === "minus") {
-            item.qty--;
-            if (item.qty <= 0) cart.splice(idx, 1);
-        }
-
-        updateCartUI();
-    }
-
-    // حذف
-    if (e.target.classList.contains("remove")) {
-        let idx = Number(e.target.dataset.index);
-        cart.splice(idx, 1);
-        updateCartUI();
-    }
+// زر فتح السلة
+document.getElementById("openCart").addEventListener("click", () => {
+    document.getElementById("cartSidebar").classList.add("open");
+    document.getElementById("cartOverlay").classList.add("show");
 });
 
-// تحديث واجهة السلة
+// الضغط على الخلفية لإغلاقها
+document.getElementById("cartOverlay").addEventListener("click", () => {
+    document.getElementById("cartSidebar").classList.remove("open");
+    document.getElementById("cartOverlay").classList.remove("show");
+});
+
+
+/* -------------------------
+   بيانات السلة
+-------------------------- */
+
+let cart = [];
+
 function updateCartUI() {
     const itemsDiv = document.getElementById("cartItems");
-    const countEl = document.getElementById("cartCount");
-    const totalEl = document.getElementById("cartTotal");
-
     itemsDiv.innerHTML = "";
-    countEl.textContent = cart.length;
 
     let total = 0;
 
-    cart.forEach((c, i) => {
-        total += c.price * c.qty;
+    cart.forEach((item, idx) => {
+        total += item.price;
 
         itemsDiv.innerHTML += `
             <div class="cart-item">
                 <div>
-                    <strong>${c.name}</strong><br>
-                    <span>${c.price} ر.س × ${c.qty}</span>
+                    <strong>${item.name}</strong><br>
+                    <span>${item.price} ر.س</span>
                 </div>
-                <div>
-                    <button class="qty-btn" data-op="plus" data-index="${i}">+</button>
-                    <button class="qty-btn" data-op="minus" data-index="${i}">-</button>
 
-                    <div class="remove" data-index="${i}" style="color:var(--gold);cursor:pointer;">
-                        حذف
-                    </div>
+                <div>
+                    <button class="remove" onclick="removeItem(${idx})">حذف</button>
                 </div>
             </div>
         `;
     });
 
-    totalEl.textContent = total.toFixed(2) + " ر.س";
+    document.getElementById("cartCount").innerText = cart.length;
+    document.getElementById("cartTotal").innerText = total + " ر.س";
 }
 
+function removeItem(i) {
+    cart.splice(i, 1);
+    updateCartUI();
+}
+
+
+
+/* -------------------------
+   تطيير المنتج للسلة
+-------------------------- */
+
+function flyToCart(imgEl) {
+    const cartBtn = document.getElementById("openCart");
+
+    const a = imgEl.getBoundingClientRect();
+    const b = cartBtn.getBoundingClientRect();
+
+    const clone = imgEl.cloneNode(true);
+    clone.className = "flying-clone";
+    clone.style.left = a.left + "px";
+    clone.style.top = a.top + "px";
+    clone.style.width = a.width + "px";
+    clone.style.height = a.height + "px";
+    document.body.appendChild(clone);
+
+    const tx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const ty = b.top + b.height / 2 - (a.top + a.height / 2);
+
+    requestAnimationFrame(() => {
+        clone.style.transform = `translate(${tx}px, ${ty}px) scale(.2)`;
+        clone.style.opacity = ".3";
+    });
+
+    clone.addEventListener(
+        "transitionend",
+        () => clone.remove(),
+        { once: true }
+    );
+}
+
+
+
+/* -------------------------
+   إضافة المنتج
+-------------------------- */
+
+document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("add-to-cart")) {
+        const card = e.target.closest(".meal");
+        const img = card.querySelector(".img img");
+
+        const name = card.querySelector("h3").innerText;
+        const price = Number(card.querySelector(".price").innerText.replace("ر.س", "").trim());
+
+        flyToCart(img);
+
+        cart.push({ name, price });
+        updateCartUI();
+    }
+});
+
+
+/* -------------------------
+   زر إفراغ السلة
+-------------------------- */
+
+document.getElementById("clearCart").addEventListener("click", () => {
+    cart = [];
+    updateCartUI();
+});
 //--------------------------------------------------
 //   تشغيل
 //--------------------------------------------------
