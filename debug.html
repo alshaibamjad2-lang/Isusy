@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Supabase Debug</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{ background:#000;color:#0f0;font-family:monospace;padding:20px; }
+.box{ margin:15px 0;padding:10px;background:#111;border-radius:8px; }
+</style>
+</head>
+
+<body>
+<h2>Debug — Supabase 🟢</h2>
+
+<div class="box" id="statusBox">Checking…</div>
+<div class="box" id="insertBox">Testing insert…</div>
+
+<script>
+const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
+const SUPABASE_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function runTests(){
+
+  // اختبار الاتصال
+  let { data: cats, error: err1 } =
+    await client.from("categories").select("*");
+
+  document.getElementById("statusBox").innerHTML =
+    `<h3>🔌 Test Select:</h3><pre>${JSON.stringify({cats, err1}, null, 2)}</pre>`;
+
+  // اختبار الإضافة
+  let { data: ins, error: err2 } =
+    await client.from("categories").insert([{ name: "اختبار_" + Date.now() }]);
+
+  document.getElementById("insertBox").innerHTML =
+    `<h3>📝 Test Insert:</h3><pre>${JSON.stringify({ins, err2}, null, 2)}</pre>`;
+}
+
+runTests();
+</script>
+
+</body>
+</html>

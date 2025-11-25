@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة التحكم - المنيو</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{background:#000;color:#fff;font-family:"Cairo",sans-serif;padding:20px;}
+.box{background:#111;padding:16px;border-radius:10px;margin-bottom:20px;border:1px solid #333;}
+input,select{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #444;background:#000;color:#fff;}
+button{padding:10px 15px;border:none;border-radius:8px;background:#c9a45a;font-weight:bold;cursor:pointer;}
+.preview{max-width:150px;margin-top:10px;border-radius:6px;}
+.item{background:#222;padding:10px;border-radius:6px;margin-bottom:10px;}
+</style>
+</head>
+
+<body>
+
+<h1 style="color:#c9a45a;text-align:center;">لوحة التحكم - المنيو</h1>
+
+<!-- إضافة قسم -->
+<div class="box">
+  <h2>إضافة قسم</h2>
+  <input id="catName" placeholder="اسم القسم">
+  <button onclick="addCategory()">إضافة</button>
+</div>
+
+<!-- إضافة منتج -->
+<div class="box">
+  <h2>إضافة منتج</h2>
+
+  <select id="catSelect"></select>
+  <input id="prodName" placeholder="اسم المنتج">
+  <input id="prodPrice" type="number" placeholder="السعر">
+  <input type="file" id="prodImg" accept="image/*">
+  <img id="preview" class="preview" style="display:none;">
+
+  <button onclick="addProduct()">إضافة المنتج</button>
+</div>
+
+<!-- عرض الأقسام -->
+<div class="box">
+  <h2>الأقسام</h2>
+  <div id="catList"></div>
+</div>
+
+<!-- رابط Debug -->
+<a href="debug.html" style="color:#c9a45a;font-size:22px;text-align:center;display:block;margin-top:30px;">🔍 صفحة Debug</a>
+
+<script>
+const client = supabase.createClient(
+  "https://ztwbgqkxmdhpzqhnefty.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg"
+);
+
+document.getElementById("prodImg").onchange = e=>{
+  const f=e.target.files[0];
+  if(!f) return;
+  document.getElementById("preview").src=URL.createObjectURL(f);
+  document.getElementById("preview").style.display="block";
+};
+
+async function loadCategories(){
+  const {data} = await client.from("categories").select("*").order("id",{ascending:false});
+  let list = document.getElementById("catList");
+  let select = document.getElementById("catSelect");
+  list.innerHTML="";
+  select.innerHTML="";
+
+  data.forEach(c=>{
+    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    list.innerHTML += `<div class="item">${c.name}</div>`;
+  });
+}
+
+async function addCategory(){
+  let name = document.getElementById("catName").value.trim();
+  if(!name) return alert("اكتب الاسم");
+
+  await client.from("categories").insert([{name}]);
+  document.getElementById("catName").value="";
+  loadCategories();
+}
+
+async function uploadImg(file){
+  let fname = Date.now()+"-"+file.name;
+  let {data,error} = await client.storage.from("menu-images").upload(fname,file);
+  if(error) return null;
+  return client.storage.from("menu-images").getPublicUrl(fname).data.publicUrl;
+}
+
+async function addProduct(){
+  let name=document.getElementById("prodName").value.trim();
+  let price=Number(document.getElementById("prodPrice").value);
+  let cat=document.getElementById("catSelect").value;
+  let file=document.getElementById("prodImg").files[0];
+
+  if(!name||!price||!file) return alert("أكمل البيانات");
+
+  let url=await uploadImg(file);
+  if(!url) return alert("خطأ رفع الصورة");
+
+  await client.from("products").insert([{name,price,image:url,category_id:cat}]);
+
+  document.getElementById("prodName").value="";
+  document.getElementById("prodPrice").value="";
+  document.getElementById("prodImg").value="";
+  document.getElementById("preview").style.display="none";
+
+  loadCategories();
+}
+
+loadCategories();
+</script>
+
+</body>
+</html>
