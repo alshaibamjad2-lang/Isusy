@@ -1,167 +1,219 @@
-// ---- Supabase ----
+// ---------- Supabase ----------
 const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
 
-let categories = [];
-let products = [];
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+//--------------------------------------------------
+//   تحميل الأقسام + المنتجات
+//--------------------------------------------------
+
+let globalCategories = [];
+let globalProducts = [];
+let currentSection = "all";
+
+async function loadMenu() {
+    // تحميل الأقسام
+    let { data: categories } = await client
+        .from("categories")
+        .select("*")
+        .order("id");
+
+    // تحميل المنتجات
+    let { data: products } = await client
+        .from("products")
+        .select("*")
+        .order("id");
+
+    globalCategories = categories || [];
+    globalProducts = products || [];
+
+    renderSections();
+    renderMeals();
+}
+
+//--------------------------------------------------
+//   الأقسام
+//--------------------------------------------------
+
+function renderSections() {
+    const secDiv = document.getElementById("sections");
+    secDiv.innerHTML = `
+        <button class="section-btn active" data-section="all">الكل</button>
+    `;
+
+    globalCategories.forEach(cat => {
+        secDiv.innerHTML += `
+            <button class="section-btn" data-section="${cat.id}">
+                ${cat.name}
+            </button>
+        `;
+    });
+
+    document.querySelectorAll(".section-btn").forEach(btn => {
+        btn.onclick = () => {
+            document.querySelector(".section-btn.active")?.classList.remove("active");
+            btn.classList.add("active");
+            currentSection = btn.dataset.section;
+            renderMeals();
+        };
+    });
+}
+
+//--------------------------------------------------
+//   عرض المنتجات — مع دعم الصور + السلة
+//--------------------------------------------------
+
+function renderMeals() {
+    const mealsDiv = document.getElementById("meals");
+    mealsDiv.innerHTML = "";
+
+    let items = currentSection === "all"
+        ? globalProducts
+        : globalProducts.filter(p => p.category_id == currentSection);
+
+    items.forEach(p => {
+        const imgURL = p.image_url && p.image_url.length > 1
+            ? p.image_url
+            : "https://placehold.co/400x300?text=No+Image";
+
+        mealsDiv.innerHTML += `
+            <div class="meal">
+                <div class="img">
+                    <img src="${imgURL}">
+                </div>
+                <div class="info">
+                    <h3>${p.name}</h3>
+                    <div class="price">${p.price} ر.س</div>
+
+                    <button 
+                        class="add-to-cart"
+                        data-id="${p.id}"
+                        data-name="${p.name}"
+                        data-price="${p.price}">
+                        إضافة للسلة
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    applyViewClass();
+}
+
+//--------------------------------------------------
+//   نظام العرض
+//--------------------------------------------------
+
+const views = [
+  { cls:'mode-grid', label:'Grid 2×2' },
+  { cls:'mode-grid3', label:'Grid 3×3' },
+  { cls:'mode-row', label:'صف كامل' },
+  { cls:'mode-slider', label:'Slider أفقي' },
+  { cls:'mode-circle', label:'Circle Cards' },
+  { cls:'mode-mag', label:'Magazine' },
+  { cls:'mode-luxury', label:'Luxury Cards' },
+  { cls:'mode-crystal', label:'Crystal Cards' }
+];
+
+let viewIndex = 0;
+
+function applyViewClass() {
+    document.getElementById("meals").className =
+        "meals " + views[viewIndex].cls;
+
+    document.getElementById("viewName").textContent =
+        views[viewIndex].label;
+}
+
+document.getElementById("toggleView").onclick = () => {
+    viewIndex = (viewIndex + 1) % views.length;
+    renderMeals();
+};
+
+//--------------------------------------------------
+//   السلة — FULL B MODE (سلة كاملة مثل الأصل)
+//--------------------------------------------------
+
 let cart = [];
 
-const mealsDiv = document.getElementById("meals");
-const sectionsDiv = document.getElementById("sections");
+document.addEventListener('click', e => {
 
-// ========== LOAD MENU ==========
-async function loadMenu() {
-  const { data: cats } = await db.from("categories").select("*").order("id");
-  const { data: prods } = await db.from("products").select("*").order("id");
+    // إضافة للسلة
+    if (e.target.classList.contains('add-to-cart')) {
+        const name = e.target.dataset.name;
+        const price = Number(e.target.dataset.price);
 
-  categories = cats;
-  products = prods;
+        let item = cart.find(c => c.name === name);
 
-  renderSections();
-  renderMeals("all");
-}
+        if (item) {
+            item.qty++;
+        } else {
+            cart.push({ name, price, qty: 1 });
+        }
 
-// Render sections
-function renderSections(){
-  sectionsDiv.innerHTML = `
-    <button class="section-btn active" data-id="all">الكل</button>
-  `;
+        updateCartUI();
+    }
 
-  categories.forEach(c=>{
-    sectionsDiv.innerHTML += `
-      <button class="section-btn" data-id="${c.id}">${c.name}</button>
-    `;
-  });
+    // تعديل الكمية
+    if (e.target.classList.contains("qty-btn")) {
+        let idx = Number(e.target.dataset.index);
+        let item = cart[idx];
 
-  document.querySelectorAll(".section-btn").forEach(btn=>{
-    btn.onclick = ()=>{
-      document.querySelector(".active")?.classList.remove("active");
-      btn.classList.add("active");
-      renderMeals(btn.dataset.id);
-    };
-  });
-}
+        if (e.target.dataset.op === "plus") item.qty++;
+        if (e.target.dataset.op === "minus") {
+            item.qty--;
+            if (item.qty <= 0) cart.splice(idx, 1);
+        }
 
-// Render meals
-function renderMeals(section){
-  mealsDiv.innerHTML = "";
+        updateCartUI();
+    }
 
-  let list = section === "all"
-    ? products
-    : products.filter(p=>p.category_id == section);
-
-  list.forEach(p=>{
-    mealsDiv.innerHTML += `
-      <div class="meal">
-        <div class="img"><img src="${p.image_url}"></div>
-        <div class="info">
-          <h3>${p.name}</h3>
-          <div class="price">${p.price} ر.س</div>
-          <button class="add-to-cart" data-id="${p.id}">إضافة للسلة</button>
-        </div>
-      </div>
-    `;
-  });
-}
-
-document.addEventListener("click", e=>{
-  if(e.target.classList.contains("add-to-cart")){
-    const id = e.target.dataset.id;
-    const product = products.find(p=>p.id == id);
-
-    flyToCart(e.target.closest(".meal").querySelector("img"));
-
-    const existing = cart.find(x=>x.id==id);
-    if(existing) existing.qty++;
-    else cart.push({id: id, name:product.name, price:product.price, qty:1});
-
-    updateCart();
-  }
+    // حذف
+    if (e.target.classList.contains("remove")) {
+        let idx = Number(e.target.dataset.index);
+        cart.splice(idx, 1);
+        updateCartUI();
+    }
 });
 
-// --- Flying Animation ---
-function flyToCart(img){
-  const rect = img.getBoundingClientRect();
-  const cartBtn = document.getElementById("openCart").getBoundingClientRect();
+// تحديث واجهة السلة
+function updateCartUI() {
+    const itemsDiv = document.getElementById("cartItems");
+    const countEl = document.getElementById("cartCount");
+    const totalEl = document.getElementById("cartTotal");
 
-  let clone = img.cloneNode();
-  clone.className = "flying-img";
-  clone.style.left = rect.left+"px";
-  clone.style.top = rect.top+"px";
+    itemsDiv.innerHTML = "";
+    countEl.textContent = cart.length;
 
-  document.body.appendChild(clone);
+    let total = 0;
 
-  setTimeout(()=>{
-    clone.style.transform = `translate(${cartBtn.left-rect.left}px, ${cartBtn.top-rect.top}px) scale(.1)`;
-    clone.style.opacity = "0";
-  },10);
+    cart.forEach((c, i) => {
+        total += c.price * c.qty;
 
-  setTimeout(()=> clone.remove(), 600);
+        itemsDiv.innerHTML += `
+            <div class="cart-item">
+                <div>
+                    <strong>${c.name}</strong><br>
+                    <span>${c.price} ر.س × ${c.qty}</span>
+                </div>
+                <div>
+                    <button class="qty-btn" data-op="plus" data-index="${i}">+</button>
+                    <button class="qty-btn" data-op="minus" data-index="${i}">-</button>
+
+                    <div class="remove" data-index="${i}" style="color:var(--gold);cursor:pointer;">
+                        حذف
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    totalEl.textContent = total.toFixed(2) + " ر.س";
 }
 
-// CART UI
-function updateCart(){
-  const items = document.getElementById("cartItems");
-  const totalEl = document.getElementById("cartTotal");
-  const countEl = document.getElementById("cartCount");
-
-  items.innerHTML = "";
-  let total = 0;
-
-  cart.forEach((it, i)=>{
-    total += it.price * it.qty;
-
-    items.innerHTML += `
-      <div class="cart-item">
-        <div>
-          <strong>${it.name}</strong><br>
-          ${it.price} ر.س × ${it.qty}
-        </div>
-        <div>
-          <button class="qty-btn" onclick="plus(${i})">+</button>
-          <button class="qty-btn" onclick="minus(${i})">−</button>
-          <div class="remove" onclick="removeItem(${i})">حذف</div>
-        </div>
-      </div>
-    `;
-  });
-
-  totalEl.textContent = total.toFixed(2)+" ر.س";
-  countEl.textContent = cart.length;
-}
-
-function plus(i){ cart[i].qty++; updateCart(); }
-function minus(i){
-  cart[i].qty--;
-  if(cart[i].qty<=0) cart.splice(i,1);
-  updateCart();
-}
-function removeItem(i){ cart.splice(i,1); updateCart(); }
-
-// CART open/close
-document.getElementById("openCart").onclick = ()=>{
-  document.getElementById("cartSidebar").classList.add("open");
-  document.getElementById("cartOverlay").classList.add("show");
-};
-document.getElementById("cartOverlay").onclick = ()=>{
-  document.getElementById("cartSidebar").classList.remove("open");
-  document.getElementById("cartOverlay").classList.remove("show");
-};
-
-// Clear
-document.getElementById("clearCart").onclick = ()=>{
-  cart=[];
-  updateCart();
-};
-
-// Order type
-document.querySelectorAll("input[name='orderType']").forEach(r=>{
-  r.onchange = ()=>{
-    document.getElementById("tableNumber").style.display =
-      r.value==="table" ? "block" : "none";
-  };
-});
-
-// Start
-loadMenu();
+//--------------------------------------------------
+//   تشغيل
+//--------------------------------------------------
+document.addEventListener("DOMContentLoaded", loadMenu);
