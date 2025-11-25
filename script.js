@@ -3,7 +3,7 @@ const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let globalProducts = [];
 let globalCategories = [];
@@ -14,13 +14,13 @@ let cart = [];
 async function loadMenu() {
 
     // تحميل الأقسام
-    const { data: categories, error: catErr } = await supabase
+    const { data: categories, error: catErr } = await client
         .from("categories")
         .select("*")
         .order("id", { ascending: true });
 
     // تحميل المنتجات
-    const { data: products, error: prodErr } = await supabase
+    const { data: products, error: prodErr } = await client
         .from("products")
         .select("*")
         .order("id", { ascending: true });
