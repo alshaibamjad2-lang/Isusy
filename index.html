@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>القائمة - Supabase</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+
+<!-- تحميل مكتبة Supabase (ضروري جدًا) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</head>
+<body>
+
+<header>قائمة الطعام</header>
+
+<div class="section-slider" id="sections"></div>
+
+<div class="controls">
+    <div style="flex:1"></div>
+    <div id="viewName">Grid 2×2</div>
+    <button id="toggleView">تغيير العرض</button>
+</div>
+
+<div id="meals" class="meals mode-grid"></div>
+
+<!-- CART -->
+<div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
+<div id="cartOverlay"></div>
+
+<div id="cartSidebar">
+  <div class="cart-title">سلة المشتريات</div>
+  <div class="cart-items" id="cartItems"></div>
+  <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
+      المجموع: <strong id="cartTotal">0 ر.س</strong>
+  </div>
+  <div class="cart-footer">
+    <button id="clearCart">إفراغ السلة</button>
+  </div>
+</div>
+
+<!-- زر السلة العائم -->
+<div class="cart-float" id="openCart">
+    🛒 <span id="cartCount">0</span>
+</div>
+
+<!-- خلفية السلة -->
+<div id="cartOverlay"></div>
+
+<!-- السلة الجانبية -->
+<div id="cartSidebar">
+
+    <div class="cart-title">سلة المشتريات</div>
+
+    <div id="cartItems" class="cart-items"></div>
+
+    <h3 style="color:var(--gold);text-align:center;margin-top:10px">
+        المجموع: <span id="cartTotal">0.00 ر.س</span>
+    </h3>
+
+    <br>
+
+    <!-- نوع الطلب -->
+    <div style="background:#151515;padding:14px;border-radius:14px;margin-top:10px;border:1px solid rgba(255,255,255,0.08)">
+        <h4 style="color:var(--gold);margin:0 0 10px 0;">نوع الطلب</h4>
+
+        <label style="display:block;margin-bottom:6px;color:#fff">
+            <input type="radio" name="orderType" checked> سفري
+        </label>
+
+        <label style="display:block;color:#fff">
+            <input type="radio" name="orderType"> على طاولة
+        </label>
+    </div>
+
+    <br>
+
+    <button id="clearCartBtn"
+        style="width:100%;background:#555;padding:12px;border:none;border-radius:10px;color:white;margin-bottom:10px;">
+        إفراغ السلة
+    </button>
+
+    <button id="finishOrderBtn"
+        style="width:100%;background:var(--gold);padding:12px;border:none;border-radius:10px;color:black;font-weight:bold;">
+        إتمام الطلب
+    </button>
+</div>
+
+<!-- ملف السكربت الأساسي -->
+<script src="script.js"></script>
+</body>
+</html>
