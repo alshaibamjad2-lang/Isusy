@@ -3,13 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>القائمة - Supabase</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+<title>قائمة الطعام</title>
 
 <link rel="stylesheet" href="style.css">
 
-<!-- تحميل مكتبة Supabase (ضروري جدًا) -->
+<!-- مكتبة Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </head>
@@ -17,32 +15,38 @@
 
 <header>قائمة الطعام</header>
 
+<!-- الأقسام -->
 <div class="section-slider" id="sections"></div>
 
+<!-- وضع العرض -->
 <div class="controls">
-    <div style="flex:1"></div>
-    <div id="viewName">Grid 2×2</div>
-    <button id="toggleView">تغيير العرض</button>
+  <div id="viewName">Grid</div>
+  <button id="toggleView">تغيير العرض</button>
 </div>
 
+<!-- المنتجات -->
 <div id="meals" class="meals mode-grid"></div>
 
-<!-- CART -->
-<div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
-<div id="cartOverlay"></div>
-
-<div id="cartSidebar">
-  <div class="cart-title">سلة المشتريات</div>
-  <div class="cart-items" id="cartItems"></div>
-  <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
-      المجموع: <strong id="cartTotal">0 ر.س</strong>
-  </div>
-  <div class="cart-footer">
-    <button id="clearCart">إفراغ السلة</button>
-  </div>
+<!-- زر السلة -->
+<div class="cart-float" id="openCart">
+  🛒 <span id="cartCount">0</span>
 </div>
 
-<!-- ملف السكربت الأساسي -->
+<!-- خلفية السلة -->
+<div id="cartOverlay"></div>
+
+<!-- السايدبار -->
+<div id="cartSidebar">
+  <div class="cart-title">سلة المشتريات</div>
+  <div id="cartItems" class="cart-items"></div>
+
+  <div style="text-align:center;color:#c9a45a;margin:12px 0;">
+    المجموع: <strong id="cartTotal">0 ر.س</strong>
+  </div>
+
+  <button id="clearCart" class="clear-btn">تفريغ السلة</button>
+</div>
+
 <script src="script.js"></script>
 </body>
 </html>
