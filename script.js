@@ -1,124 +1,123 @@
-// ----------- إعداد Supabase -----------
+// ————— إعداد Supabase —————
 const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
 
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let globalProducts = [];
-let globalCategories = [];
+let categories = [];
+let products = [];
 let cart = [];
 
-
-// ----------- تحميل المنيو -----------
+// ————— تحميل الأقسام والمنتجات —————
 async function loadMenu() {
 
-    // تحميل الأقسام
-    const { data: categories, error: catErr } = await client
-        .from("categories")
-        .select("*")
-        .order("id", { ascending: true });
+  const { data: cats } = await db.from("categories").select("*").order("id");
+  const { data: prods } = await db.from("products").select("*").order("id");
 
-    // تحميل المنتجات
-    const { data: products, error: prodErr } = await client
-        .from("products")
-        .select("*")
-        .order("id", { ascending: true });
+  categories = cats || [];
+  products = prods || [];
 
-    globalCategories = categories || [];
-    globalProducts  = products || [];
-
-    renderSections(globalCategories);
-    renderSelected("all");
+  renderSections();
+  renderProducts("all");
 }
 
 
+// ————— عرض الأقسام —————
+function renderSections() {
+  const sec = document.getElementById("sections");
+  sec.innerHTML = `<button class="section-btn active" data-id="all">الكل</button>`;
 
-// ----------- عرض الأقسام -----------
-function renderSections(categories) {
-    const sec = document.getElementById("sections");
-    sec.innerHTML = `<button class="section-btn active" data-sec="all">الكل</button>`;
+  categories.forEach(c => {
+    sec.innerHTML += `
+      <button class="section-btn" data-id="${c.id}">${c.name}</button>
+    `;
+  });
 
-    categories.forEach(c => {
-        sec.innerHTML += `
-            <button class="section-btn" data-sec="${c.id}">
-                ${c.name}
-            </button>
-        `;
-    });
-
-    document.querySelectorAll(".section-btn").forEach(btn => {
-        btn.onclick = () => {
-            document.querySelector(".section-btn.active")?.classList.remove("active");
-            btn.classList.add("active");
-            renderSelected(btn.dataset.sec);
-        };
-    });
+  document.querySelectorAll(".section-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelector(".section-btn.active")?.classList.remove("active");
+      btn.classList.add("active");
+      renderProducts(btn.dataset.id);
+    };
+  });
 }
 
 
+// ————— عرض المنتجات —————
+function renderProducts(catID) {
+  const meals = document.getElementById("meals");
+  meals.innerHTML = "";
 
-// ----------- عرض المنتجات حسب القسم -----------
-function renderSelected(section) {
+  let list = catID === "all"
+    ? products
+    : products.filter(p => p.category_id == catID);
 
-    const meals = document.getElementById("meals");
-    meals.innerHTML = "";
+  list.forEach(p => {
+    meals.innerHTML += `
+      <div class="meal">
+        <div class="img">
+          <img src="${p.image || "https://placehold.co/600x400"}">
+        </div>
 
-    let items = section === "all"
-        ? globalProducts
-        : globalProducts.filter(p => p.category_id == section);
-
-    items.forEach(p => {
-
-        // --- الصورة من العمود الصحيح (image) ---
-        const imageURL = p.image ? p.image : "no-image.png";
-
-        meals.innerHTML += `
-            <div class="meal">
-                <div class="img">
-                    <img src="${imageURL}" alt="">
-                </div>
-
-                <div class="info">
-                    <h3>${p.name}</h3>
-                    <div class="price">${p.price} ر.س</div>
-
-                    <button class="add-btn" onclick='addToCart(${JSON.stringify(p)})'>
-                        إضافة للسلة
-                    </button>
-                </div>
-            </div>
-        `;
-    });
+        <div class="info">
+          <h3>${p.name}</h3>
+          <div class="price">${p.price} ر.س</div>
+          <button class="add-btn" onclick='addToCart(${JSON.stringify(p)})'>
+            إضافة للسلة
+          </button>
+        </div>
+      </div>
+    `;
+  });
 }
 
 
+// ————— إضافة للسلة —————
+function addToCart(p) {
+  cart.push(p);
+  updateCart();
+}
 
-// ----------- إضافة للسلة -----------
-function addToCart(product) {
-    cart.push(product);
-    updateCartCount();
+// ————— تحديث السلة —————
+function updateCart() {
+  document.getElementById("cartCount").innerText = cart.length;
+
+  let itemsDiv = document.getElementById("cartItems");
+  itemsDiv.innerHTML = "";
+
+  let total = 0;
+
+  cart.forEach(item => {
+    total += item.price;
+    itemsDiv.innerHTML += `
+      <div style="padding:10px;border-bottom:1px solid #333;">
+        <strong>${item.name}</strong> — ${item.price} ر.س
+      </div>
+    `;
+  });
+
+  document.getElementById("cartTotal").innerText = total + " ر.س";
 }
 
 
-
-// ----------- تحديث رقم السلة -----------
-function updateCartCount() {
-    document.getElementById("cartCount").innerText = cart.length;
-}
-
-
-
-// ----------- فتح/غلق السلة -----------
+// ————— فتح السلة —————
 document.getElementById("openCart").onclick = () => {
-    document.getElementById("cartSidebar").classList.add("show");
+  document.getElementById("cartSidebar").classList.add("open");
+  document.getElementById("cartOverlay").style.display = "block";
 };
 
+// ————— إغلاق السلة —————
 document.getElementById("cartOverlay").onclick = () => {
-    document.getElementById("cartSidebar").classList.remove("show");
+  document.getElementById("cartSidebar").classList.remove("open");
+  document.getElementById("cartOverlay").style.display = "none";
+};
+
+// ————— تفريغ السلة —————
+document.getElementById("clearCart").onclick = () => {
+  cart = [];
+  updateCart();
 };
 
 
-
-// ----------- تحميل الصفحة -----------
-document.addEventListener("DOMContentLoaded", loadMenu);
+// ————— تشغيل عند التحميل —————
+loadMenu();
