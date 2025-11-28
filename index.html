@@ -1,18 +1,13 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>القائمة - Supabase</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>قائمة الطعام</title>
 <link rel="stylesheet" href="style.css">
-
-<!-- تحميل مكتبة Supabase (ضروري جدًا) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 </head>
+
 <body>
 
 <header>قائمة الطعام</header>
@@ -20,29 +15,32 @@
 <div class="section-slider" id="sections"></div>
 
 <div class="controls">
-    <div style="flex:1"></div>
-    <div id="viewName">Grid 2×2</div>
-    <button id="toggleView">تغيير العرض</button>
+  <div></div>
 </div>
 
-<div id="meals" class="meals mode-grid"></div>
+<div id="meals" class="meals"></div>
 
-<!-- CART -->
+<!-- cart button -->
 <div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
+
+<!-- overlay -->
 <div id="cartOverlay"></div>
 
+<!-- cart sidebar -->
 <div id="cartSidebar">
   <div class="cart-title">سلة المشتريات</div>
+
   <div class="cart-items" id="cartItems"></div>
-  <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
-      المجموع: <strong id="cartTotal">0 ر.س</strong>
+
+  <div style="color:var(--gold); text-align:center; margin:10px 0;">
+    المجموع: <b id="cartTotal">0 ر.س</b>
   </div>
-  <div class="cart-footer">
-    <button id="clearCart">إفراغ السلة</button>
-  </div>
+
+  <button id="clearCart" class="cart-btn grey">إفراغ السلة</button>
+  <button id="checkout" class="cart-btn gold">إتمام الطلب</button>
 </div>
 
-<!-- ملف السكربت الأساسي -->
+<!-- ✔️ سكربت في آخر الصفحة -->
 <script src="script.js"></script>
 </body>
 </html>
