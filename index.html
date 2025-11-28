@@ -3,34 +3,23 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>قائمة الطعام</title>
+<title>قائمة الطعام — متصل بـ Supabase</title>
 
-<link rel="stylesheet" href="style.css" />
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<!-- زر السلة -->
+<!-- floating cart -->
 <div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
 
-<!-- خلفية السلة -->
+<!-- overlay -->
 <div id="cartOverlay"></div>
 
-<!-- السلة -->
-<div id="cartSidebar">
-  <div class="cart-title">سلة المشتريات</div>
-  <div class="cart-items" id="cartItems"></div>
+<!-- sidebar -->
+<div id="cartSidebar"> ... </div>
 
-  <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
-      المجموع: <strong id="cartTotal">0 ر.س</strong>
-  </div>
-
-  <button id="clearCart" class="clear-btn">إفراغ السلة</button>
-</div>
-
-<header>قائمة الطعام</header>
+<header>قائمة الطعام — أوضاع متعددة</header>
 
 <div class="section-slider" id="sections"></div>
 
@@ -42,27 +31,183 @@
 
 <div id="meals" class="meals mode-grid"></div>
 
-<script src="script.js"></script>
-
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-/* ——— فتح السلة ——— */
-document.getElementById("openCart").onclick = () => {
-    document.getElementById("cartSidebar").classList.add("open");
-    document.getElementById("cartOverlay").classList.add("show");
-};
+const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
 
-/* ——— إغلاق السلة ——— */
-document.getElementById("cartOverlay").onclick = () => {
-    document.getElementById("cartSidebar").classList.remove("open");
-    document.getElementById("cartOverlay").classList.remove("show");
-};
+const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-/* ——— زر إفراغ السلة ——— */
-document.getElementById("clearCart").onclick = () => {
-    cart = [];
+/* VIEWS array (كما سابقاً) */
+const views = [
+  { cls:'mode-grid', label:'Grid 2×2' },
+  { cls:'mode-grid3', label:'Grid 3×3' },
+  { cls:'mode-row', label:'صف كامل' },
+  { cls:'mode-slider', label:'Slider أفقي' },
+  { cls:'mode-circle', label:'Circle Cards' },
+  { cls:'mode-mag', label:'Magazine' },
+  { cls:'mode-luxury', label:'Luxury Cards' },
+  { cls:'mode-crystal', label:'Crystal Cards' }
+];
+
+let viewIndex = 0;
+let currentSection = null;
+let cart = [];
+
+const mealsDiv = document.getElementById('meals');
+const viewNameEl = document.getElementById('viewName');
+
+/* جلب الأقسام من Supabase */
+async function renderSections(){
+  const secDiv = document.getElementById("sections");
+  secDiv.innerHTML = "";
+  const { data: cats, error } = await supabase.from('categories').select('*').order('id', { ascending: true });
+  if(error){ console.error(error); secDiv.innerHTML = "<div style='padding:12px;color:var(--muted)'>خطأ تحميل الأقسام</div>"; return; }
+  if(!cats || cats.length===0){ secDiv.innerHTML = "<div style='padding:12px;color:var(--muted)'>لا توجد أقسام.</div>"; return; }
+
+  cats.forEach((c, index)=>{
+    const btn = document.createElement("button");
+    btn.className = "section-btn" + (index===0 ? " active" : "");
+    btn.textContent = c.name;
+    btn.dataset.sectionId = c.id;
+    btn.addEventListener('click', ()=>{
+      document.querySelector('.section-btn.active')?.classList.remove('active');
+      btn.classList.add('active');
+      currentSection = c.id;
+      renderMeals();
+    });
+    secDiv.appendChild(btn);
+  });
+
+  currentSection = cats[0].id;
+}
+
+/* جلب المنتجات لقسم محدد */
+async function renderMeals(){
+  mealsDiv.innerHTML = "";
+  if(!currentSection) return;
+  const { data: items, error } = await supabase.from('products').select('*').eq('category_id', currentSection).order('created_at', { ascending: false });
+  if(error){ console.error(error); return; }
+  items.forEach((m,i)=>{
+    const card = document.createElement('div');
+    card.className = 'meal';
+    const imageSrc = m.image_url && m.image_url.length ? m.image_url : "https://via.placeholder.com/800x600?text=No+Image";
+    card.innerHTML = `
+      <div class="img"><img src="${imageSrc}"></div>
+      <div class="info">
+        <h3>${escapeHtml(m.name)}</h3>
+        <div class="price">${Number(m.price).toFixed(2)} ر.س</div>
+        <button class="add-to-cart" data-name="${escapeHtml(m.name)}" data-price="${Number(m.price)}">إضافة للسلة</button>
+      </div>
+    `;
+    mealsDiv.appendChild(card);
+  });
+  applyViewClass();
+}
+
+function escapeHtml(text){
+  if(!text && text!==0) return "";
+  return String(text).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; });
+}
+
+function applyViewClass(){
+  mealsDiv.className = 'meals ' + views[viewIndex].cls;
+  viewNameEl.textContent = views[viewIndex].label;
+}
+
+document.getElementById('toggleView').addEventListener('click', ()=>{
+  viewIndex = (viewIndex + 1) % views.length;
+  renderMeals();
+});
+
+/* أحداث السلة كما في مشروعك — نفس الكود القديم */
+document.addEventListener('click', (e)=>{
+  if(e.target.classList.contains('add-to-cart')){
+    const name = e.target.dataset.name;
+    const price = Number(e.target.dataset.price);
+    const card = e.target.closest('.meal');
+    const imgEl = card.querySelector('.img img');
+
+    const found = cart.find(it=>it.name===name);
+    if(found){
+      found.qty++;
+      updateCartUI();
+      return;
+    }
+
+    // toy fly animation (ignore errors if image not loaded)
+    try{
+      const a = imgEl.getBoundingClientRect();
+      const b = document.getElementById('openCart').getBoundingClientRect();
+      const clone = imgEl.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.left = a.left + 'px';
+      clone.style.top = a.top + 'px';
+      clone.style.width = a.width + 'px';
+      clone.style.height = a.height + 'px';
+      clone.style.transition = 'transform 0.4s ease-out, opacity 0.4s';
+      document.body.appendChild(clone);
+      const tx = b.left + b.width/2 - (a.left + a.width/2);
+      const ty = b.top + b.height/2 - (a.top + a.height/2);
+      requestAnimationFrame(()=> { clone.style.transform = `translate(${tx}px,${ty}px) scale(.2)`; clone.style.opacity = '0.5'; });
+      clone.addEventListener('transitionend', ()=> clone.remove(), {once:true});
+    }catch(err){ /* ignore */ }
+
+    cart.push({name, price, qty:1});
     updateCartUI();
-};
-</script>
+  }
 
+  if(e.target.classList.contains('qty-btn')){
+    const idx = Number(e.target.dataset.index);
+    const op = e.target.dataset.op;
+    if(op==="plus") cart[idx].qty++;
+    if(op==="minus"){ cart[idx].qty--; if(cart[idx].qty <= 0) cart.splice(idx,1); }
+    updateCartUI();
+  }
+
+  if(e.target.classList.contains('remove')){
+    const idx = Number(e.target.dataset.index);
+    cart.splice(idx,1);
+    updateCartUI();
+  }
+});
+
+function updateCartUI(){
+  const itemsDiv = document.getElementById('cartItems');
+  const countEl = document.getElementById('cartCount');
+  const totalEl = document.getElementById('cartTotal');
+  itemsDiv && (itemsDiv.innerHTML='');
+  countEl.textContent = cart.length;
+  let total = 0;
+  cart.forEach((item,idx)=>{
+    total += item.price * item.qty;
+    const row = document.createElement('div');
+    row.className = 'cart-item';
+    row.innerHTML = `
+      <div>
+        <strong>${escapeHtml(item.name)}</strong><br>
+        <span>${Number(item.price).toFixed(2)} ر.س × ${item.qty}</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; gap:6px;">
+          <button class="qty-btn" data-op="plus" data-index="${idx}">+</button>
+          <button class="qty-btn" data-op="minus" data-index="${idx}">−</button>
+        </div>
+        <div class="remove" data-index="${idx}" style="color:var(--gold); cursor:pointer;">حذف</div>
+      </div>
+    `;
+    itemsDiv && itemsDiv.appendChild(row);
+  });
+  totalEl && (totalEl.textContent = total.toFixed(2) + " ر.س");
+}
+
+/* init */
+(async ()=>{
+  await renderSections();
+  await renderMeals();
+  updateCartUI();
+})();
+</script>
 </body>
 </html>
