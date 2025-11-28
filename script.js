@@ -259,3 +259,38 @@ document.getElementById("clearCart").addEventListener("click", () => {
 //   تشغيل
 //--------------------------------------------------
 document.addEventListener("DOMContentLoaded", loadMenu);
+
+
+
+
+// إظهار رقم الطاولة إذا اختار dine-in
+document.querySelectorAll('input[name="orderType"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        const isTable = document.querySelector('input[name="orderType"]:checked').value === "table";
+        document.getElementById("tableNumber").style.display = isTable ? "block" : "none";
+    });
+});
+
+// زر إكمال الطلب
+document.getElementById("completeOrder").addEventListener("click", () => {
+    if (cart.length === 0) {
+        alert("السلة فارغة!");
+        return;
+    }
+
+    const orderType = document.querySelector('input[name="orderType"]:checked').value;
+
+    if (orderType === "table") {
+        const tableNum = document.getElementById("tableNumber").value.trim();
+        if (tableNum === "") {
+            alert("أدخل رقم الطاولة");
+            return;
+        }
+        alert("تم إكمال طلب طاولة رقم " + tableNum + " بنجاح 🎉");
+    } else {
+        alert("تم إكمال طلب سفري بنجاح 🎉");
+    }
+
+    cart = [];
+    updateCartUI();
+});
