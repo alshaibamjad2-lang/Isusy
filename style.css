@@ -227,3 +227,36 @@ header{
   overflow:hidden;
   box-shadow:0 10px 30px rgba(0,0,0,0.4);
 }
+
+/* زر الحذف */
+.remove {
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 6px 10px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  text-align: center;
+  transition: 0.3s;
+}
+.remove:hover {
+  background: var(--gold);
+  color: #000;
+}
+
+/* زر تفريغ السلة */
+#clearCart {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.3s;
+}
+#clearCart:hover {
+  background: var(--gold);
+  color: #000;
+}
