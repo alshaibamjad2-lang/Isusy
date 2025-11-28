@@ -73,11 +73,10 @@ function renderMeals() {
         ? globalProducts
         : globalProducts.filter(p => p.category_id == currentSection);
 
-    const imgURL = p.image && p.image.length > 1
-    ? p.image
-    : "https://placehold.co/400x300?text=No+Image";
-
-
+    items.forEach(p => {
+        const imgURL = p.image && p.image.length > 1
+            ? p.image
+            : "https://placehold.co/400x300?text=No+Image";
 
         mealsDiv.innerHTML += `
             <div class="meal">
