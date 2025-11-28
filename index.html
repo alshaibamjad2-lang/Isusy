@@ -3,46 +3,66 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>القائمة - Supabase</title>
+<title>قائمة الطعام</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
 
-<link rel="stylesheet" href="style.css">
-
-<!-- تحميل مكتبة Supabase (ضروري جدًا) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 </head>
+
 <body>
+
+<!-- زر السلة -->
+<div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
+
+<!-- خلفية السلة -->
+<div id="cartOverlay"></div>
+
+<!-- السلة -->
+<div id="cartSidebar">
+  <div class="cart-title">سلة المشتريات</div>
+  <div class="cart-items" id="cartItems"></div>
+
+  <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
+      المجموع: <strong id="cartTotal">0 ر.س</strong>
+  </div>
+
+  <button id="clearCart" class="clear-btn">إفراغ السلة</button>
+</div>
 
 <header>قائمة الطعام</header>
 
 <div class="section-slider" id="sections"></div>
 
 <div class="controls">
-    <div style="flex:1"></div>
-    <div id="viewName">Grid 2×2</div>
-    <button id="toggleView">تغيير العرض</button>
+  <div style="flex:1"></div>
+  <div id="viewName">Grid 2×2</div>
+  <button id="toggleView">تغيير العرض</button>
 </div>
 
 <div id="meals" class="meals mode-grid"></div>
 
-<!-- CART -->
-<div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
-<div id="cartOverlay"></div>
-
-<div id="cartSidebar">
-  <div class="cart-title">سلة المشتريات</div>
-  <div class="cart-items" id="cartItems"></div>
-  <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
-      المجموع: <strong id="cartTotal">0 ر.س</strong>
-  </div>
-  <div class="cart-footer">
-    <button id="clearCart">إفراغ السلة</button>
-  </div>
-</div>
-
-<!-- ملف السكربت الأساسي -->
 <script src="script.js"></script>
+
+<script>
+/* ——— فتح السلة ——— */
+document.getElementById("openCart").onclick = () => {
+    document.getElementById("cartSidebar").classList.add("open");
+    document.getElementById("cartOverlay").classList.add("show");
+};
+
+/* ——— إغلاق السلة ——— */
+document.getElementById("cartOverlay").onclick = () => {
+    document.getElementById("cartSidebar").classList.remove("open");
+    document.getElementById("cartOverlay").classList.remove("show");
+};
+
+/* ——— زر إفراغ السلة ——— */
+document.getElementById("clearCart").onclick = () => {
+    cart = [];
+    updateCartUI();
+};
+</script>
+
 </body>
 </html>
