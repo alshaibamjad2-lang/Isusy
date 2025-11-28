@@ -3,55 +3,46 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>قائمة الطعام — منيو</title>
+<title>القائمة - Supabase</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="style.css">
 
-<!-- Supabase JS (CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+<!-- تحميل مكتبة Supabase (ضروري جدًا) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </head>
 <body>
 
 <header>قائمة الطعام</header>
 
-<!-- Debug box (اخطاء الاتصال او معلومات مفيدة) -->
-<div id="debug" class="debug" style="display:none"></div>
-
-<!-- قسم الأزرار (الأقسام) -->
 <div class="section-slider" id="sections"></div>
 
-<!-- تحكم بالعرض -->
 <div class="controls">
-  <div style="flex:1"></div>
-  <div id="viewName">Grid 2×2</div>
-  <button id="toggleView" class="gold-btn">تغيير العرض</button>
+    <div style="flex:1"></div>
+    <div id="viewName">Grid 2×2</div>
+    <button id="toggleView">تغيير العرض</button>
 </div>
 
-<!-- قائمة المنتجات -->
 <div id="meals" class="meals mode-grid"></div>
 
-<!-- زر السلة العائم -->
+<!-- CART -->
 <div class="cart-float" id="openCart">🛒<span id="cartCount">0</span></div>
-
-<!-- overlay -->
 <div id="cartOverlay"></div>
 
-<!-- sidebar سلة -->
-<div id="cartSidebar" aria-hidden="true">
+<div id="cartSidebar">
   <div class="cart-title">سلة المشتريات</div>
   <div class="cart-items" id="cartItems"></div>
-
   <div style="text-align:center; margin:15px 0; color:var(--gold); font-size:20px;">
       المجموع: <strong id="cartTotal">0 ر.س</strong>
   </div>
-
-  <div style="padding:10px; display:flex; gap:10px;">
-    <button id="clearCart" class="btn-muted">إفراغ السلة</button>
-    <button id="checkout" class="gold-btn">إتمام الطلب</button>
+  <div class="cart-footer">
+    <button id="clearCart">إفراغ السلة</button>
   </div>
 </div>
 
+<!-- ملف السكربت الأساسي -->
 <script src="script.js"></script>
 </body>
 </html>
