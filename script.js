@@ -1,52 +1,50 @@
-// ====================================================
-// إنشاء عميل Supabase بشكل صحيح بدون تخريب باقي السكربت
-// ====================================================
+// ---------- Supabase ----------
 const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
+const SUPABASE_KEY =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
 
-// مهم جداً — استخدم sb بدل supabase أو client حتى لا تخرب السكربت
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+//--------------------------------------------------
+//   تحميل الأقسام + المنتجات
+//--------------------------------------------------
 
-// ====================================================
-// تحميل الأقسام + المنتجات
-// ====================================================
-async function loadMenu() {
-    try {
-        const { data: categories } = await sb
-            .from("categories")
-            .select("*")
-            .order("id");
-
-        const { data: products } = await sb
-            .from("products")
-            .select("*")
-            .order("id");
-
-        renderSections(categories);
-        renderProducts(categories, products);
-
-    } catch (err) {
-        console.error("خطأ تحميل المنيو:", err);
-    }
-}
-
-
-// ====================================================
-// عرض الأقسام
-// ====================================================
 let globalCategories = [];
 let globalProducts = [];
+let currentSection = "all";
 
-function renderSections(categories) {
-    globalCategories = categories;
-    const sec = document.getElementById("sections");
-    sec.innerHTML = "";
+async function loadMenu() {
+    // تحميل الأقسام
+    let { data: categories } = await client
+        .from("categories")
+        .select("*")
+        .order("id");
 
-    sec.innerHTML += `<button class="section-btn active" data-section="all">الكل</button>`;
+    // تحميل المنتجات
+    let { data: products } = await client
+        .from("products")
+        .select("*")
+        .order("id");
 
-    categories.forEach(cat => {
-        sec.innerHTML += `
+    globalCategories = categories || [];
+    globalProducts = products || [];
+
+    renderSections();
+    renderMeals();
+}
+
+//--------------------------------------------------
+//   الأقسام
+//--------------------------------------------------
+
+function renderSections() {
+    const secDiv = document.getElementById("sections");
+    secDiv.innerHTML = `
+        <button class="section-btn active" data-section="all">الكل</button>
+    `;
+
+    globalCategories.forEach(cat => {
+        secDiv.innerHTML += `
             <button class="section-btn" data-section="${cat.id}">
                 ${cat.name}
             </button>
@@ -57,179 +55,207 @@ function renderSections(categories) {
         btn.onclick = () => {
             document.querySelector(".section-btn.active")?.classList.remove("active");
             btn.classList.add("active");
-            renderSelected(btn.dataset.section);
+            currentSection = btn.dataset.section;
+            renderMeals();
         };
     });
 }
 
+//--------------------------------------------------
+//   عرض المنتجات — مع دعم الصور + السلة
+//--------------------------------------------------
 
-// ====================================================
-// عرض المنتجات
-// ====================================================
-function renderProducts(categories, products) {
-    globalProducts = products;
-    renderSelected("all");
-}
+function renderMeals() {
+    const mealsDiv = document.getElementById("meals");
+    mealsDiv.innerHTML = "";
 
-function renderSelected(section) {
-    const meals = document.getElementById("meals");
-    meals.innerHTML = "";
-
-    const list = section === "all"
+    let items = currentSection === "all"
         ? globalProducts
-        : globalProducts.filter(p => p.category == section);
+        : globalProducts.filter(p => p.category_id == currentSection);
 
-    list.forEach(p => {
-        meals.innerHTML += `
+    items.forEach(p => {
+        const imgURL = p.image && p.image.length > 1
+            ? p.image
+            : "https://placehold.co/400x300?text=No+Image";
+
+        mealsDiv.innerHTML += `
             <div class="meal">
                 <div class="img">
-                    <img src="${p.image ? p.image : 'no-image.png'}">
+                    <img src="${imgURL}">
                 </div>
-
                 <div class="info">
                     <h3>${p.name}</h3>
                     <div class="price">${p.price} ر.س</div>
-                </div>
 
-                <button class="add-btn" onclick="addToCart(${p.id})">
-                    إضافة للسلة
-                </button>
+                    <button 
+                        class="add-to-cart"
+                        data-id="${p.id}"
+                        data-name="${p.name}"
+                        data-price="${p.price}">
+                        إضافة للسلة
+                    </button>
+                </div>
             </div>
         `;
     });
+
+    applyViewClass();
 }
 
+//--------------------------------------------------
+//   نظام العرض
+//--------------------------------------------------
 
-// ====================================================
-// السلة
-// ====================================================
+const views = [
+  { cls:'mode-grid', label:'Grid 2×2' },
+  { cls:'mode-grid3', label:'Grid 3×3' },
+  { cls:'mode-row', label:'صف كامل' },
+  { cls:'mode-slider', label:'Slider أفقي' },
+  { cls:'mode-circle', label:'Circle Cards' },
+  { cls:'mode-mag', label:'Magazine' },
+  { cls:'mode-luxury', label:'Luxury Cards' },
+  { cls:'mode-crystal', label:'Crystal Cards' }
+];
+
+let viewIndex = 0;
+
+function applyViewClass() {
+    document.getElementById("meals").className =
+        "meals " + views[viewIndex].cls;
+
+    document.getElementById("viewName").textContent =
+        views[viewIndex].label;
+}
+
+document.getElementById("toggleView").onclick = () => {
+    viewIndex = (viewIndex + 1) % views.length;
+    renderMeals();
+};
+
+//--------------------------------------------------
+//   السلة — FULL B MODE (سلة كاملة مثل الأصل)
+//--------------------------------------------------
+
+/* -------------------------
+   فتح و إغلاق السلة
+-------------------------- */
+
+// زر فتح السلة
+document.getElementById("openCart").addEventListener("click", () => {
+    document.getElementById("cartSidebar").classList.add("open");
+    document.getElementById("cartOverlay").classList.add("show");
+});
+
+// الضغط على الخلفية لإغلاقها
+document.getElementById("cartOverlay").addEventListener("click", () => {
+    document.getElementById("cartSidebar").classList.remove("open");
+    document.getElementById("cartOverlay").classList.remove("show");
+});
+
+
+/* -------------------------
+   بيانات السلة
+-------------------------- */
+
 let cart = [];
 
-function addToCart(id) {
-    const item = globalProducts.find(p => p.id === id);
-    if (!item) return;
+function updateCartUI() {
+    const itemsDiv = document.getElementById("cartItems");
+    itemsDiv.innerHTML = "";
 
-    const exist = cart.find(c => c.id === id);
-
-    if (exist) exist.qty += 1;
-    else cart.push({ ...item, qty: 1 });
-
-    updateCart();
-}
-
-
-// فتح السلة
-document.getElementById("openCart").onclick = () => {
-    document.getElementById("cartSidebar").classList.add("show");
-    document.getElementById("cartOverlay").style.display = "block";
-};
-
-// إغلاق السلة
-document.getElementById("cartOverlay").onclick = () => {
-    document.getElementById("cartSidebar").classList.remove("show");
-    document.getElementById("cartOverlay").style.display = "none";
-};
-
-
-// تحديث واجهة السلة
-function updateCart() {
-    const box = document.getElementById("cartItems");
-    const totalBox = document.getElementById("cartTotal");
-    const count = document.getElementById("cartCount");
-
-    box.innerHTML = "";
     let total = 0;
 
-    cart.forEach((item, i) => {
-        total += item.price * item.qty;
+    cart.forEach((item, idx) => {
+        total += item.price;
 
-        box.innerHTML += `
-            <div class="cart-row">
-                <div>${item.name}</div>
-                <div>${item.price} ر.س</div>
-                <div>x${item.qty}</div>
-                <button onclick="removeItem(${i})" class="remove-btn">حذف</button>
+        itemsDiv.innerHTML += `
+            <div class="cart-item">
+                <div>
+                    <strong>${item.name}</strong><br>
+                    <span>${item.price} ر.س</span>
+                </div>
+
+                <div>
+                    <button class="remove" onclick="removeItem(${idx})">حذف</button>
+                </div>
             </div>
         `;
     });
 
-    totalBox.textContent = `${total} ر.س`;
-    count.textContent = cart.length;
+    document.getElementById("cartCount").innerText = cart.length;
+    document.getElementById("cartTotal").innerText = total + " ر.س";
 }
 
 function removeItem(i) {
     cart.splice(i, 1);
-    updateCart();
+    updateCartUI();
 }
 
-// تفريغ السلة
-document.getElementById("clearCart").onclick = () => {
-    cart = [];
-    updateCart();
-};
 
 
-// ====================================================
-// إتمام الطلب — حفظ الطلب في Supabase
-// ====================================================
-document.getElementById("completeOrder").onclick = async () => {
-    if (cart.length === 0) return alert("السلة فارغة!");
+/* -------------------------
+   تطيير المنتج للسلة
+-------------------------- */
 
-    const orderType = document.querySelector('input[name="orderType"]:checked').value;
-    const tableNumInput = document.getElementById("tableNumber");
-    const tableNumber = orderType === "table" ? tableNumInput.value : null;
+function flyToCart(imgEl) {
+    const cartBtn = document.getElementById("openCart");
 
-    const items = cart.map(i => ({
-        id: i.id,
-        name: i.name,
-        price: i.price,
-        qty: i.qty
-    }));
+    const a = imgEl.getBoundingClientRect();
+    const b = cartBtn.getBoundingClientRect();
 
-    const payload = {
-        items,
-        total: items.reduce((s, i) => s + i.price * i.qty, 0),
-        type: orderType,
-        table_number: tableNumber,
-        status: "pending"
-    };
+    const clone = imgEl.cloneNode(true);
+    clone.className = "flying-clone";
+    clone.style.left = a.left + "px";
+    clone.style.top = a.top + "px";
+    clone.style.width = a.width + "px";
+    clone.style.height = a.height + "px";
+    document.body.appendChild(clone);
 
-    const { data, error } = await sb.from("orders").insert([payload]);
+    const tx = b.left + b.width / 2 - (a.left + a.width / 2);
+    const ty = b.top + b.height / 2 - (a.top + a.height / 2);
 
-    if (error) {
-        console.error(error);
-        alert("خطأ أثناء إرسال الطلب");
-        return;
+    requestAnimationFrame(() => {
+        clone.style.transform = `translate(${tx}px, ${ty}px) scale(.2)`;
+        clone.style.opacity = ".3";
+    });
+
+    clone.addEventListener(
+        "transitionend",
+        () => clone.remove(),
+        { once: true }
+    );
+}
+
+
+
+/* -------------------------
+   إضافة المنتج
+-------------------------- */
+
+document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("add-to-cart")) {
+        const card = e.target.closest(".meal");
+        const img = card.querySelector(".img img");
+
+        const name = card.querySelector("h3").innerText;
+        const price = Number(card.querySelector(".price").innerText.replace("ر.س", "").trim());
+
+        flyToCart(img);
+
+        cart.push({ name, price });
+        updateCartUI();
     }
+});
 
-    alert("تم إرسال الطلب بنجاح!");
 
+/* -------------------------
+   زر إفراغ السلة
+-------------------------- */
+
+document.getElementById("clearCart").addEventListener("click", () => {
     cart = [];
-    updateCart();
-
-    document.getElementById("cartSidebar").classList.remove("show");
-    document.getElementById("cartOverlay").style.display = "none";
-};
-
-
-// ====================================================
-// تغيير وضع العرض
-// ====================================================
-document.getElementById("toggleView").onclick = () => {
-    const m = document.getElementById("meals");
-
-    if (m.classList.contains("mode-grid")) {
-        m.classList.remove("mode-grid");
-        m.classList.add("mode-list");
-        document.getElementById("viewName").textContent = "عرض طولي";
-    } else {
-        m.classList.remove("mode-list");
-        m.classList.add("mode-grid");
-        document.getElementById("viewName").textContent = "Grid 2×2";
-    }
-};
-
-
-// ====================================================
+    updateCartUI();
+});
+//   تشغيل
+//--------------------------------------------------
 document.addEventListener("DOMContentLoaded", loadMenu);
-// ====================================================
