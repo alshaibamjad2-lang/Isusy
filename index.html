@@ -38,35 +38,7 @@
       المجموع: <strong id="cartTotal">0 ر.س</strong>
   </div>
   <div class="cart-footer">
-    <!-- نوع الطلب (سفري / على طاولة) -->
-    <div style="margin:10px 0; padding:12px; border:1px solid rgba(255,255,255,0.06); border-radius:10px; background:#0b0b0b;">
-      <div style="color:var(--gold); font-weight:700; margin-bottom:8px;">نوع الطلب</div>
-
-      <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
-        <input type="radio" name="orderType" value="takeaway" checked style="accent-color: var(--gold);">
-        <span>سفري</span>
-      </label>
-
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-        <input type="radio" name="orderType" value="table" style="accent-color: var(--gold);">
-        <span>على طاولة</span>
-      </label>
-
-      <div id="tableNumberWrap" style="display:none; margin-top:8px;">
-        <input id="tableNumber" type="number" min="1" placeholder="رقم الطاولة"
-          style="width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background:#000; color:#fff;">
-      </div>
-    </div>
-
-    <!-- أزرار السلة -->
-    <div style="display:flex; gap:8px; margin-top:8px;">
-      <button id="clearCart" style="flex:1; padding:10px; border-radius:10px; background:#444; color:#fff; border:none; font-weight:700; cursor:pointer;">إفراغ السلة</button>
-
-      <!-- زر إتمام الطلب الذي نربطه بجافاسكربت -->
-      <button id="completeOrder" style="flex:1; padding:10px; border-radius:10px; background:var(--gold); color:#000; border:none; font-weight:700; cursor:pointer;">
-        إتمام الطلب
-      </button>
-    </div>
+    <button id="clearCart">إفراغ السلة</button>
   </div>
 </div>
 
