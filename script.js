@@ -160,84 +160,6 @@ function removeItem(i) {
   updateCart();
 }
 
-
-// إظهار / إخفاء حقل رقم الطاولة عند تغيير نوع الطلب
-‏document.querySelectorAll('input[name="orderType"]').forEach(r => {
-‏  r.addEventListener('change', () => {
-‏    const isTable = document.querySelector('input[name="orderType"]:checked').value === 'table';
-‏    document.getElementById('tableNumberWrap').style.display = isTable ? 'block' : 'none';
-  });
-});
-
-// ---------- حفظ الطلب في Supabase عند الضغط على 'إتمام الطلب' ----------
-‏document.getElementById("completeOrder").addEventListener("click", async () => {
-‏  try {
-‏    if (!cart || cart.length === 0) {
-‏      alert("السلة فارغة!");
-‏      return;
-    }
-
-    // اجمع عناصر الطلب مع الكميات (في هذا المشروع العناصر تخزن كاسم وسعر - اضبط لو عندك id/qty من admin)
-    // إذا عندك حقول qty في العناصر، استخدمها. هنا نأخذ qty = 1 لكل عنصر لأن الكود الحالي يضيف عنصر واحد لكل ضغطة.
-‏    const items = cart.map(it => ({
-‏      id: it.id ?? null,
-‏      name: it.name,
-‏      price: Number(it.price || 0),
-‏      qty: Number(it.qty || 1)
-    }));
-
-    // اجمالي
-‏    const total = items.reduce((s, it) => s + (it.price * it.qty), 0);
-
-    // نوع الطلب و رقم الطاولة
-‏    const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'takeaway';
-‏    let tableNumber = null;
-‏    if (orderType === 'table') {
-‏      const tv = document.getElementById('tableNumber').value.trim();
-‏      if (!tv) {
-‏        alert("أدخل رقم الطاولة");
-‏        return;
-      }
-‏      tableNumber = Number(tv);
-    }
-
-    // تحضير الحمولة للحفظ
-‏    const payload = {
-‏      items: JSON.stringify(items),
-‏      total: total,
-‏      type: orderType,
-‏      table_number: tableNumber,
-‏      status: 'pending'
-    };
-
-    // إدخال في جدول orders
-‏    const { data, error } = await client
-‏      .from('orders')
-‏      .insert([payload])
-‏      .select()
-‏      .single();
-
-‏    if (error) {
-‏      console.error("خطأ أثناء حفظ الطلب:", error);
-‏      alert("حصل خطأ أثناء إرسال الطلب. افتح الكونسول للمزيد.");
-‏      return;
-    }
-
-‏    alert("تم إرسال الطلب بنجاح! رقم الطلب: " + (data?.id || "غير متوفر"));
-
-    // تفريغ السلة بعد الإرسال
-‏    cart = [];
-‏    updateCartUI();
-
-    // (اختياري) يمكنك إعادة توجيه المستخدم أو فتح صفحة الطلبات:
-‏    // window.location.href = 'orders.html';
-‏  } catch (err) {
-‏    console.error(err);
-‏    alert("حصل خطأ غير متوقع أثناء إرسال الطلب.");
-  }
-});
-
-
 /* تفريغ السلة */
 document.getElementById("clearCart").onclick = () => {
   cart = [];
@@ -248,50 +170,66 @@ document.getElementById("clearCart").onclick = () => {
 /* =========================================================
    إتمام الطلب — حفظ الطلب في Supabase
 ========================================================= */
-document.getElementById("completeOrder").onclick = async () => {
-  if (cart.length === 0) return alert("السلة فارغة!");
+document.getElementById("completeOrder").addEventListener("click", async () => {
+  try {
+    if (!cart || cart.length === 0) {
+      alert("السلة فارغة!");
+      return;
+    }
 
-  const orderType = document.querySelector(
-    'input[name="orderType"]:checked'
-  ).value;
+    const items = cart.map(it => ({
+      id: it.id ?? null,
+      name: it.name,
+      price: Number(it.price || 0),
+      qty: Number(it.qty || 1)
+    }));
 
-  const tableNumber =
-    orderType === "table"
-      ? document.getElementById("tableNumber").value
-      : null;
+    const total = items.reduce((s, it) => s + (it.price * it.qty), 0);
 
-  const items = cart.map((i) => ({
-    id: i.id,
-    name: i.name,
-    price: i.price,
-    qty: i.qty,
-  }));
+    const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'takeaway';
 
-  const payload = {
-    items,
-    total: items.reduce((s, i) => s + i.price * i.qty, 0),
-    type: orderType,
-    table_number: tableNumber,
-    status: "pending",
-  };
+    let tableNumber = null;
+    if (orderType === 'table') {
+      tableNumber = Number(document.getElementById('tableNumber').value.trim());
+      if (!tableNumber) {
+        alert("أدخل رقم الطاولة");
+        return;
+      }
+    }
 
-  const { error } = await sb.from("orders").insert([payload]);
+    const payload = {
+      items,
+      total,
+      type: orderType,
+      table_number: tableNumber,
+      status: 'pending'
+    };
 
-  if (error) {
-    console.error(error);
-    alert("خطأ أثناء إرسال الطلب");
-    return;
+    const { data, error } = await sb
+      .from('orders')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      console.error(error);
+      alert("خطأ أثناء إرسال الطلب");
+      return;
+    }
+
+    alert("تم إرسال الطلب بنجاح ✔");
+
+    cart = [];
+    updateCart();
+
+    document.getElementById("cartSidebar").classList.remove("show");
+    document.getElementById("cartOverlay").style.display = "none";
+
+  } catch (err) {
+    console.error(err);
+    alert("خطأ غير متوقع");
   }
-
-  alert("تم إرسال الطلب بنجاح ✔");
-
-  cart = [];
-  updateCart();
-
-  document.getElementById("cartSidebar").classList.remove("show");
-  document.getElementById("cartOverlay").style.display = "none";
-};
-
+});
 
 /* =========================================================
    تغيير وضع العرض
