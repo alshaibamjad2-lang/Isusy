@@ -234,5 +234,7 @@ document.getElementById("toggleView").onclick = () => {
 
 
 /* ========================================================= */
-document.addEventListener("DOMContentLoaded", loadMenu);
+window.onload = () => {
+  loadMenu();
+};
 /* ========================================================= */
