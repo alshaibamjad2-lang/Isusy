@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>لوحة التحكم المتطورة – المنيو</title>
+<title>لوحة التحكم – المنيو</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -78,7 +78,6 @@ button{
 .edit{ background:#0077ff; color:#fff; }
 .del{ background:#b30000; color:#fff; }
 
-/* Popup for image preview */
 #imgPreviewPopup{
     position:fixed;
     top:0;left:0;
@@ -98,7 +97,7 @@ button{
 
 <body>
 
-<h1>لوحة التحكم المتطورة – المنيو</h1>
+<h1>لوحة التحكم – المنيو</h1>
 
 <!-- ======================== البحث ======================== -->
 <div class="box">
@@ -119,7 +118,7 @@ button{
     <div id="catList"></div>
 </div>
 
-<!-- ======================== إضافة / تعديل منتج ======================== -->
+<!-- ======================== المنتجات ======================== -->
 <div class="box">
     <h2>🍔 إدارة المنتجات</h2>
 
@@ -141,14 +140,14 @@ button{
     <div id="productsList"></div>
 </div>
 
-<!-- ================== Image popup ================== -->
+<!-- صورة الحجم الكامل -->
 <div id="imgPreviewPopup" onclick="this.style.display='none'">
     <img src="">
 </div>
 
 <script>
-/* ======================== Supabase ======================== */
 
+// -------- Supabase --------
 const sb = supabase.createClient(
  "https://ztwbgqkxmdhpzqhnefty.supabase.co",
  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg"
@@ -156,11 +155,13 @@ const sb = supabase.createClient(
 
 let editID = null;
 
-/* ======================== تحميل أولي ======================== */
+
+// -------- تحميل أولي --------
 loadCategories();
 loadProducts();
 
-/* ======================== تحميل الأقسام ======================== */
+
+// -------- تحميل الأقسام --------
 async function loadCategories(){
     const {data} = await sb.from("categories").select("*").order("id",{ascending:false});
 
@@ -183,7 +184,8 @@ async function loadCategories(){
     });
 }
 
-/* ======================== إضافة قسم ======================== */
+
+// -------- إضافة قسم --------
 async function addCategory(){
     const name=document.getElementById("catName").value.trim();
     if(!name) return alert("اكتب الاسم");
@@ -193,7 +195,8 @@ async function addCategory(){
     loadCategories();
 }
 
-/* ======================== تعديل القسم ======================== */
+
+// -------- تعديل قسم --------
 async function editCategory(id, oldName){
     const newName=prompt("اسم جديد:", oldName);
     if(!newName) return;
@@ -202,7 +205,8 @@ async function editCategory(id, oldName){
     loadCategories();
 }
 
-/* ======================== حذف القسم ======================== */
+
+// -------- حذف قسم --------
 async function deleteCategory(id){
     if(!confirm("هل تريد حذف القسم وجميع منتجاته؟")) return;
 
@@ -213,7 +217,8 @@ async function deleteCategory(id){
     loadProducts();
 }
 
-/* ======================== رفع الصورة ======================== */
+
+// -------- رفع صورة --------
 async function uploadImg(file){
     let name = Date.now()+"-"+file.name;
     let {data,error} = await sb.storage.from("menu-images").upload(name,file);
@@ -221,7 +226,8 @@ async function uploadImg(file){
     return sb.storage.from("menu-images").getPublicUrl(name).data.publicUrl;
 }
 
-/* ======================== إضافة / تعديل منتج ======================== */
+
+// -------- إضافة / تعديل منتج --------
 async function saveProduct(){
     const name=document.getElementById("prodName").value.trim();
     const price=Number(document.getElementById("prodPrice").value);
@@ -232,23 +238,20 @@ async function saveProduct(){
         return alert("أكمل البيانات");
 
     let imgURL=null;
-
     if(file){ imgURL = await uploadImg(file); }
 
-    if(editID){  // تحديث منتج
-        let payload = { 
-            name, 
-            price, 
-            category_id:cat 
-        };
+    if(editID){  
+        let payload = { name, price, category_id:cat };
 
         if(imgURL) payload.image = imgURL;
 
-        await sb.from("products").update(payload).eq("id",editID);
+        await sb.from("products")
+            .update(payload)
+            .eq("id", parseInt(editID));   // 🔥 الحل النهائي
 
         editID=null;
         alert("تم التعديل");
-    }else{       // إضافة منتج جديد
+    }else{
         if(!imgURL) return alert("يجب اختيار صورة");
 
         await sb.from("products").insert([{name,price,image:imgURL,category_id:cat}]);
@@ -259,7 +262,8 @@ async function saveProduct(){
     loadProducts();
 }
 
-/* ======================== تحميل المنتجات ======================== */
+
+// -------- تحميل المنتجات --------
 async function loadProducts(){
     const {data} = await sb.from("products").select("*").order("id",{ascending:false});
     const list=document.getElementById("productsList");
@@ -279,16 +283,18 @@ async function loadProducts(){
     });
 }
 
-/* ======================== عرض الصورة بالحجم الكامل ======================== */
+
+// -------- عرض صورة كاملة --------
 function showImg(src){
     const popup=document.getElementById("imgPreviewPopup");
     popup.querySelector("img").src=src;
     popup.style.display="flex";
 }
 
-/* ======================== بدء تعديل المنتج ======================== */
+
+// -------- بدء تعديل --------
 function startEdit(id,name,price,cat,img){
-    editID=id;
+    editID = parseInt(id); // مهم جداً
     document.getElementById("prodName").value=name;
     document.getElementById("prodPrice").value=price;
     document.getElementById("catSelect").value=cat;
@@ -296,14 +302,16 @@ function startEdit(id,name,price,cat,img){
     document.getElementById("preview").style.display="block";
 }
 
-/* ======================== حذف المنتج ======================== */
+
+// -------- حذف منتج --------
 async function deleteProduct(id){
     if(!confirm("حذف المنتج؟")) return;
     await sb.from("products").delete().eq("id",id);
     loadProducts();
 }
 
-/* ======================== بحث متقدم ======================== */
+
+// -------- بحث --------
 document.getElementById("searchBox").oninput=async()=>{
     const q=document.getElementById("searchBox").value.trim();
     const box=document.getElementById("searchResults");
@@ -330,7 +338,8 @@ document.getElementById("searchBox").oninput=async()=>{
     });
 };
 
-/* ======================== إعادة ضبط النموذج ======================== */
+
+// -------- إعادة ضبط --------
 function resetForm(){
     document.getElementById("prodName").value="";
     document.getElementById("prodPrice").value="";
@@ -338,6 +347,7 @@ function resetForm(){
     document.getElementById("prodImg").value="";
     document.getElementById("preview").style.display="none";
 }
+
 </script>
 
 </body>
