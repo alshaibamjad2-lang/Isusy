@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة التحكم – المنيو</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body{
+    background:#000;
+    color:#fff;
+    font-family:"Cairo", sans-serif;
+    padding:20px;
+}
+
+h1{
+    color:#c9a45a;
+    text-align:center;
+    margin-bottom:25px;
+}
+
+.box{
+    background:#111;
+    padding:20px;
+    border-radius:12px;
+    margin-bottom:20px;
+    border:1px solid #333;
+}
+
+input, select{
+    width:100%;
+    padding:10px;
+    margin-top:8px;
+    border-radius:8px;
+    border:1px solid #444;
+    background:#000;
+    color:#fff;
+}
+
+button{
+    padding:10px 15px;
+    border:none;
+    border-radius:8px;
+    background:#c9a45a;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+.row{
+    display:flex;
+    gap:15px;
+}
+
+.product{
+    background:#1b1b1b;
+    padding:12px;
+    border-radius:10px;
+    margin-top:12px;
+    border:1px solid #333;
+}
+
+.product img{
+    width:100px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.btn{
+    padding:6px 10px;
+    border-radius:6px;
+    font-size:13px;
+    cursor:pointer;
+}
+
+.edit{ background:#0077ff; color:#fff; }
+.del{ background:#b30000; color:#fff; }
+
+#imgPreviewPopup{
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    background:rgba(0,0,0,.85);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+#imgPreviewPopup img{
+    width:80%;
+    border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>لوحة التحكم – المنيو</h1>
+
+<!-- ======================== البحث ======================== -->
+<div class="box">
+    <h2>🔎 بحث عن منتج</h2>
+    <input id="searchBox" placeholder="اكتب اسم المنتج...">
+    <div id="searchResults"></div>
+</div>
+
+<!-- ======================== الأقسام ======================== -->
+<div class="box">
+    <h2>📁 إدارة الأقسام</h2>
+
+    <div class="row">
+        <input id="catName" placeholder="اسم القسم">
+        <button onclick="addCategory()">➕ إضافة</button>
+    </div>
+
+    <div id="catList"></div>
+</div>
+
+<!-- ======================== المنتجات ======================== -->
+<div class="box">
+    <h2>🍔 إدارة المنتجات</h2>
+
+    <select id="catSelect"></select>
+
+    <input id="prodName" placeholder="اسم المنتج">
+    <input id="prodPrice" type="number" placeholder="السعر">
+
+    <label style="color:#aaa">الصورة (اختياري عند التعديل)</label>
+    <input type="file" id="prodImg" accept="image/*">
+    <img id="preview" style="max-width:150px;margin-top:10px;display:none;border-radius:6px;">
+
+    <button onclick="saveProduct()">💾 حفظ المنتج</button>
+</div>
+
+<!-- ======================== قائمة المنتجات ======================== -->
+<div class="box">
+    <h2>📦 جميع المنتجات</h2>
+    <div id="productsList"></div>
+</div>
+
+<!-- صورة الحجم الكامل -->
+<div id="imgPreviewPopup" onclick="this.style.display='none'">
+    <img src="">
+</div>
+
+<script>
+
+// -------- Supabase --------
+const sb = supabase.createClient(
+ "https://ztwbgqkxmdhpzqhnefty.supabase.co",
+ "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg"
+);
+
+let editID = null;
+
+
+// -------- تحميل أولي --------
+loadCategories();
+loadProducts();
+
+
+// -------- تحميل الأقسام --------
+async function loadCategories(){
+    const {data} = await sb.from("categories").select("*").order("id",{ascending:false});
+
+    const catList = document.getElementById("catList");
+    const catSelect = document.getElementById("catSelect");
+
+    catList.innerHTML="";
+    catSelect.innerHTML="<option value=''>اختر القسم</option>";
+
+    data.forEach(c=>{
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+
+        catList.innerHTML += `
+            <div class="product">
+                <strong>${c.name}</strong>
+                <button class="btn edit" onclick="editCategory(${c.id}, '${c.name}')">تعديل</button>
+                <button class="btn del" onclick="deleteCategory(${c.id})">حذف</button>
+            </div>
+        `;
+    });
+}
+
+
+// -------- إضافة قسم --------
+async function addCategory(){
+    const name=document.getElementById("catName").value.trim();
+    if(!name) return alert("اكتب الاسم");
+
+    await sb.from("categories").insert([{name}]);
+    document.getElementById("catName").value="";
+    loadCategories();
+}
+
+
+// -------- تعديل قسم --------
+async function editCategory(id, oldName){
+    const newName=prompt("اسم جديد:", oldName);
+    if(!newName) return;
+
+    await sb.from("categories").update({name:newName}).eq("id",id);
+    loadCategories();
+}
+
+
+// -------- حذف قسم --------
+async function deleteCategory(id){
+    if(!confirm("هل تريد حذف القسم وجميع منتجاته؟")) return;
+
+    await sb.from("products").delete().eq("category_id",id);
+    await sb.from("categories").delete().eq("id",id);
+
+    loadCategories();
+    loadProducts();
+}
+
+
+// -------- رفع صورة --------
+async function uploadImg(file){
+    let name = Date.now()+"-"+file.name;
+    let {data,error} = await sb.storage.from("menu-images").upload(name,file);
+    if(error) return null;
+    return sb.storage.from("menu-images").getPublicUrl(name).data.publicUrl;
+}
+
+
+// -------- إضافة / تعديل منتج --------
+async function saveProduct(){
+    const name=document.getElementById("prodName").value.trim();
+    const price=Number(document.getElementById("prodPrice").value);
+    const cat=document.getElementById("catSelect").value;
+    const file=document.getElementById("prodImg").files[0];
+
+    if(!name || !price || !cat)
+        return alert("أكمل البيانات");
+
+    let imgURL=null;
+    if(file){ imgURL = await uploadImg(file); }
+
+    if(editID){  
+        let payload = { name, price, category_id:cat };
+
+        if(imgURL) payload.image = imgURL;
+
+        await sb.from("products")
+            .update(payload)
+            .eq("id", parseInt(editID));   // 🔥 الحل النهائي
+
+        editID=null;
+        alert("تم التعديل");
+    }else{
+        if(!imgURL) return alert("يجب اختيار صورة");
+
+        await sb.from("products").insert([{name,price,image:imgURL,category_id:cat}]);
+        alert("تمت الإضافة");
+    }
+
+    resetForm();
+    loadProducts();
+}
+
+
+// -------- تحميل المنتجات --------
+async function loadProducts(){
+    const {data} = await sb.from("products").select("*").order("id",{ascending:false});
+    const list=document.getElementById("productsList");
+    list.innerHTML="";
+
+    data.forEach(p=>{
+        list.innerHTML += `
+            <div class="product">
+                <strong>${p.name}</strong> — ${p.price} ر.س
+                <br>
+                <img src="${p.image}" onclick="showImg('${p.image}')">
+                <br>
+                <button class="btn edit" onclick='startEdit(${p.id},"${p.name}",${p.price},${p.category_id},"${p.image}")'>تعديل</button>
+                <button class="btn del" onclick="deleteProduct(${p.id})">حذف</button>
+            </div>
+        `;
+    });
+}
+
+
+// -------- عرض صورة كاملة --------
+function showImg(src){
+    const popup=document.getElementById("imgPreviewPopup");
+    popup.querySelector("img").src=src;
+    popup.style.display="flex";
+}
+
+
+// -------- بدء تعديل --------
+function startEdit(id,name,price,cat,img){
+    editID = parseInt(id); // مهم جداً
+    document.getElementById("prodName").value=name;
+    document.getElementById("prodPrice").value=price;
+    document.getElementById("catSelect").value=cat;
+    document.getElementById("preview").src=img;
+    document.getElementById("preview").style.display="block";
+}
+
+
+// -------- حذف منتج --------
+async function deleteProduct(id){
+    if(!confirm("حذف المنتج؟")) return;
+    await sb.from("products").delete().eq("id",id);
+    loadProducts();
+}
+
+
+// -------- بحث --------
+document.getElementById("searchBox").oninput=async()=>{
+    const q=document.getElementById("searchBox").value.trim();
+    const box=document.getElementById("searchResults");
+
+    if(q.length < 2){ box.innerHTML=""; return; }
+
+    const {data}=await sb.from("products")
+        .select("*")
+        .ilike("name", `%${q}%`);
+
+    box.innerHTML="";
+
+    data.forEach(p=>{
+        box.innerHTML += `
+            <div class="product">
+                <strong>${p.name}</strong> — ${p.price} ر.س
+                <br>
+                <img src="${p.image}">
+                <br>
+                <button class="btn edit" onclick='startEdit(${p.id},"${p.name}",${p.price},${p.category_id},"${p.image}")'>تعديل</button>
+                <button class="btn del" onclick="deleteProduct(${p.id})">حذف</button>
+            </div>
+        `;
+    });
+};
+
+
+// -------- إعادة ضبط --------
+function resetForm(){
+    document.getElementById("prodName").value="";
+    document.getElementById("prodPrice").value="";
+    document.getElementById("catSelect").value="";
+    document.getElementById("prodImg").value="";
+    document.getElementById("preview").style.display="none";
+}
+
+</script>
+
+</body>
+</html>
