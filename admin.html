@@ -1,354 +1,336 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>لوحة التحكم – المنيو</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>لوحة التحكم — إدارة المنيو + إضافات</title>
 
+<!-- Supabase JS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-body{
-    background:#000;
-    color:#fff;
-    font-family:"Cairo", sans-serif;
-    padding:20px;
-}
+:root{ --bg:#070707; --panel:#111; --gold:#c9a45a; --muted:#dcd6cc; }
+body{ font-family:"Cairo",sans-serif; background:linear-gradient(180deg,#0b0b0b,#0f0f0f); color:var(--muted); margin:0; padding:24px; }
+h1{ color:var(--gold); text-align:center; margin:8px 0 18px; font-size:24px; font-weight:700; font-family:"Cairo",sans-serif; }
+.box{ background:var(--panel); padding:14px; border-radius:12px; border:1px solid rgba(255,255,255,0.03); margin-bottom:14px; }
+.row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+input,select,textarea{ width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:#0b0b0b; color:var(--muted); margin-top:8px; }
+button{ background:var(--gold); color:#000; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700; margin-top:8px; }
+.small-btn{ padding:6px 10px; border-radius:6px; background:#444; color:#fff; border:none; cursor:pointer; }
+.product{ background:#0e0e0e; padding:10px; border-radius:8px; margin-top:10px; border:1px solid rgba(255,255,255,0.03); }
+.product img{ max-width:96px; border-radius:6px; display:block; margin-top:8px; }
+.btn{ padding:6px 8px; border-radius:6px; margin-left:6px; cursor:pointer; }
+.btn.del{ background:#b30000; color:#fff; }
+.btn.edit{ background:#0077ff; color:#fff; }
+label.inline{ display:inline-flex; gap:8px; align-items:center; margin-right:8px; }
 
-h1{
-    color:#c9a45a;
-    text-align:center;
-    margin-bottom:25px;
-}
-
-.box{
-    background:#111;
-    padding:20px;
-    border-radius:12px;
-    margin-bottom:20px;
-    border:1px solid #333;
-}
-
-input, select{
-    width:100%;
-    padding:10px;
-    margin-top:8px;
-    border-radius:8px;
-    border:1px solid #444;
-    background:#000;
-    color:#fff;
-}
-
-button{
-    padding:10px 15px;
-    border:none;
-    border-radius:8px;
-    background:#c9a45a;
-    font-weight:bold;
-    cursor:pointer;
-    margin-top:10px;
-}
-
-.row{
-    display:flex;
-    gap:15px;
-}
-
-.product{
-    background:#1b1b1b;
-    padding:12px;
-    border-radius:10px;
-    margin-top:12px;
-    border:1px solid #333;
-}
-
-.product img{
-    width:100px;
-    border-radius:6px;
-    cursor:pointer;
-}
-
-.btn{
-    padding:6px 10px;
-    border-radius:6px;
-    font-size:13px;
-    cursor:pointer;
-}
-
-.edit{ background:#0077ff; color:#fff; }
-.del{ background:#b30000; color:#fff; }
-
-#imgPreviewPopup{
-    position:fixed;
-    top:0;left:0;
-    width:100%;height:100%;
-    background:rgba(0,0,0,.85);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:9999;
-}
-#imgPreviewPopup img{
-    width:80%;
-    border-radius:10px;
-}
+/* small responsive */
+@media(max-width:720px){ .row{ flex-direction:column; } }
 </style>
 </head>
-
 <body>
 
-<h1>لوحة التحكم – المنيو</h1>
+<h1>لوحة التحكم — إدارة المنيو & الإضافات</h1>
 
-<!-- ======================== البحث ======================== -->
+<!-- ================= Sections & Categories ================= -->
 <div class="box">
-    <h2>🔎 بحث عن منتج</h2>
-    <input id="searchBox" placeholder="اكتب اسم المنتج...">
-    <div id="searchResults"></div>
+  <h2>إدارة الأقسام</h2>
+  <div class="row">
+    <input id="secName" placeholder="اسم القسم (مثال: كيك)">
+    <button id="addSecBtn">إضافة قسم</button>
+  </div>
+  <div id="catList" style="margin-top:12px"></div>
 </div>
 
-<!-- ======================== الأقسام ======================== -->
+<!-- ================= Products Manager ================= -->
 <div class="box">
-    <h2>📁 إدارة الأقسام</h2>
+  <h2>إدارة المنتجات</h2>
 
-    <div class="row">
-        <input id="catName" placeholder="اسم القسم">
-        <button onclick="addCategory()">➕ إضافة</button>
-    </div>
-
-    <div id="catList"></div>
-</div>
-
-<!-- ======================== المنتجات ======================== -->
-<div class="box">
-    <h2>🍔 إدارة المنتجات</h2>
-
-    <select id="catSelect"></select>
-
+  <div class="row">
+    <select id="prodCatSelect"></select>
     <input id="prodName" placeholder="اسم المنتج">
     <input id="prodPrice" type="number" placeholder="السعر">
+  </div>
 
-    <label style="color:#aaa">الصورة (اختياري عند التعديل)</label>
-    <input type="file" id="prodImg" accept="image/*">
-    <img id="preview" style="max-width:150px;margin-top:10px;display:none;border-radius:6px;">
+  <label style="display:block;margin-top:8px;color:#aaa;">صورة (رفع أو رابط)</label>
+  <input type="file" id="prodImgFile" accept="image/*">
+  <input id="prodImgUrl" placeholder="أو رابط للصورة (اختياري)">
 
-    <button onclick="saveProduct()">💾 حفظ المنتج</button>
+  <div class="row" style="margin-top:10px;">
+    <button id="addProdBtn">إضافة المنتج</button>
+    <button id="updateProdBtn" style="display:none">حفظ التعديل</button>
+    <button id="clearStorage" class="small-btn">مسح (Reset local)</button>
+  </div>
 </div>
 
-<!-- ======================== قائمة المنتجات ======================== -->
+<!-- ================= Add-ons Manager ================= -->
 <div class="box">
-    <h2>📦 جميع المنتجات</h2>
-    <div id="productsList"></div>
+  <h2>⚙️ إدارة الإضافات (Add-ons)</h2>
+
+  <div class="row" style="align-items:center;">
+    <label style="min-width:110px">اختر المنتج لإدارة إضافاته</label>
+    <select id="addonProductSelect"></select>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
+    <input id="addonName" placeholder="اسم الإضافة (مثلاً: زيادة كاكاو)">
+    <input id="addonPrice" type="number" placeholder="السعر (مثلاً: 500)">
+    <button id="saveAddonBtn">إضافة الإضافة</button>
+  </div>
+
+  <div id="addonsList" style="margin-top:12px"></div>
 </div>
 
-<!-- صورة الحجم الكامل -->
-<div id="imgPreviewPopup" onclick="this.style.display='none'">
-    <img src="">
+<!-- ================= List current products ================= -->
+<div class="box">
+  <h2>قائمة المنتجات</h2>
+  <div id="productsList"></div>
 </div>
 
 <script>
+/* ---------- Supabase Client ---------- */
+/* ضع مفاتيحك هنا — لا تستخدم service_role في الواجهة */
+const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// -------- Supabase --------
-const sb = supabase.createClient(
- "https://ztwbgqkxmdhpzqhnefty.supabase.co",
- "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg"
-);
+/* ---------- State ---------- */
+let editProdId = null;
 
-let editID = null;
+/* ---------- Utilities ---------- */
+function byId(id){ return document.getElementById(id); }
 
-
-// -------- تحميل أولي --------
-loadCategories();
-loadProducts();
-
-
-// -------- تحميل الأقسام --------
+/* ---------- Categories ---------- */
 async function loadCategories(){
-    const {data} = await sb.from("categories").select("*").order("id",{ascending:false});
+  const { data, error } = await sb.from("categories").select("*").order("id",{ascending:true});
+  const catList = byId("catList");
+  const prodCatSelect = byId("prodCatSelect");
+  const addonProductSelect = byId("addonProductSelect");
 
-    const catList = document.getElementById("catList");
-    const catSelect = document.getElementById("catSelect");
+  prodCatSelect.innerHTML = "<option value=''>اختر قسم</option>";
+  addonProductSelect.innerHTML = "<option value=''>اختر منتج</option>";
+  catList.innerHTML = "";
 
-    catList.innerHTML="";
-    catSelect.innerHTML="<option value=''>اختر القسم</option>";
+  if(error){ console.error("loadCategories error", error); return; }
+  if(!data || data.length===0){ catList.innerHTML = "<div style='color:#999'>لا توجد أقسام بعد</div>"; return; }
 
-    data.forEach(c=>{
-        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+  data.forEach(c=>{
+    prodCatSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    // cat list with delete button
+    catList.innerHTML += `<div class="product"><strong>${c.name}</strong>
+      <button class="btn edit" onclick="editCategory(${c.id}, '${c.name}')">تعديل</button>
+      <button class="btn del" onclick="deleteCategory(${c.id})">حذف</button>
+    </div>`;
+  });
 
-        catList.innerHTML += `
-            <div class="product">
-                <strong>${c.name}</strong>
-                <button class="btn edit" onclick="editCategory(${c.id}, '${c.name}')">تعديل</button>
-                <button class="btn del" onclick="deleteCategory(${c.id})">حذف</button>
-            </div>
-        `;
-    });
+  // populate addonProductSelect with products (we will also load products separately)
+  await loadProductsForAddonSelect();
 }
 
+/* add category */
+byId("addSecBtn").addEventListener("click", async ()=>{
+  const name = byId("secName").value.trim();
+  if(!name) return alert("أدخل اسم القسم");
+  await sb.from("categories").insert([{ name }]);
+  byId("secName").value = "";
+  loadCategories();
+});
 
-// -------- إضافة قسم --------
-async function addCategory(){
-    const name=document.getElementById("catName").value.trim();
-    if(!name) return alert("اكتب الاسم");
-
-    await sb.from("categories").insert([{name}]);
-    document.getElementById("catName").value="";
-    loadCategories();
-}
-
-
-// -------- تعديل قسم --------
 async function editCategory(id, oldName){
-    const newName=prompt("اسم جديد:", oldName);
-    if(!newName) return;
-
-    await sb.from("categories").update({name:newName}).eq("id",id);
-    loadCategories();
+  const newName = prompt("الاسم الجديد للقسم:", oldName);
+  if(!newName) return;
+  await sb.from("categories").update({ name: newName }).eq("id", id);
+  loadCategories();
 }
 
-
-// -------- حذف قسم --------
 async function deleteCategory(id){
-    if(!confirm("هل تريد حذف القسم وجميع منتجاته؟")) return;
-
-    await sb.from("products").delete().eq("category_id",id);
-    await sb.from("categories").delete().eq("id",id);
-
-    loadCategories();
-    loadProducts();
+  if(!confirm("هل تريد حذف هذا القسم وكل منتجاته؟")) return;
+  await sb.from("products").delete().eq("category_id", id);
+  await sb.from("categories").delete().eq("id", id);
+  loadCategories();
+  loadProducts(); // refresh products view
 }
 
+/* ---------- Products ---------- */
 
-// -------- رفع صورة --------
-async function uploadImg(file){
-    let name = Date.now()+"-"+file.name;
-    let {data,error} = await sb.storage.from("menu-images").upload(name,file);
-    if(error) return null;
-    return sb.storage.from("menu-images").getPublicUrl(name).data.publicUrl;
+async function loadProducts(){
+  const { data, error } = await sb.from("products").select("*").order("id",{ascending:false});
+  const productsList = byId("productsList");
+  productsList.innerHTML = "";
+  const addonProductSelect = byId("addonProductSelect");
+
+  if(error) { console.error("loadProducts error", error); return; }
+  if(!data || data.length===0){ productsList.innerHTML = "<div style='color:#999'>لا توجد منتجات بعد</div>"; return; }
+
+  data.forEach(p=>{
+    const img = p.image ? `<img src="${p.image}" alt="">` : "";
+    productsList.innerHTML += `
+      <div class="product">
+        <strong>${p.name}</strong> — ${p.price} ر.س
+        <div>${img}</div>
+        <div style="margin-top:8px;">
+          <button class="btn edit" onclick='startEditProduct(${p.id},"${escapeForJS(p.name)}",${p.price},"${p.image || ""}",${p.category_id || "null"})'>تعديل</button>
+          <button class="btn del" onclick='deleteProduct(${p.id})'>حذف</button>
+        </div>
+      </div>
+    `;
+    // also populate addon product select (if not already)
+    if(!Array.from(addonProductSelect.options).some(o=>o.value==p.id)){
+      addonProductSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+    }
+  });
 }
 
+/* helper to sanitize string for inline JS */
+function escapeForJS(s){
+  if(!s) return "";
+  return s.replaceAll("'", "\\'").replaceAll('"','\\"');
+}
 
-// -------- إضافة / تعديل منتج --------
-async function saveProduct(){
-    const name=document.getElementById("prodName").value.trim();
-    const price=Number(document.getElementById("prodPrice").value);
-    const cat=document.getElementById("catSelect").value;
-    const file=document.getElementById("prodImg").files[0];
+byId("addProdBtn").addEventListener("click", async ()=>{
+  try{
+    const name = byId("prodName").value.trim();
+    const price = Number(byId("prodPrice").value);
+    const cat = byId("prodCatSelect").value;
+    const fileInput = byId("prodImgFile");
+    const url = byId("prodImgUrl").value.trim();
 
-    if(!name || !price || !cat)
-        return alert("أكمل البيانات");
+    if(!name || !price || !cat) return alert("أكمل اسم المنتج، السعر والقسم");
 
-    let imgURL=null;
-    if(file){ imgURL = await uploadImg(file); }
-
-    if(editID){  
-        let payload = { name, price, category_id:cat };
-
-        if(imgURL) payload.image = imgURL;
-
-        await sb.from("products")
-            .update(payload)
-            .eq("id", parseInt(editID));   // 🔥 الحل النهائي
-
-        editID=null;
-        alert("تم التعديل");
-    }else{
-        if(!imgURL) return alert("يجب اختيار صورة");
-
-        await sb.from("products").insert([{name,price,image:imgURL,category_id:cat}]);
-        alert("تمت الإضافة");
+    let imageValue = "";
+    // file upload to storage (menu-images)
+    if(fileInput.files && fileInput.files[0]){
+      const file = fileInput.files[0];
+      const filename = Date.now() + "-" + file.name;
+      const { data, error } = await sb.storage.from("menu-images").upload(filename, file);
+      if(error){ console.error("upload error", error); throw error; }
+      imageValue = sb.storage.from("menu-images").getPublicUrl(filename).data.publicUrl;
+    } else if(url){
+      imageValue = url;
     }
 
-    resetForm();
+    await sb.from("products").insert([{ name, price, image: imageValue, category_id: Number(cat) }]);
+    alert("تمت الإضافة");
+    // reset
+    byId("prodName").value=""; byId("prodPrice").value=""; byId("prodImgUrl").value=""; byId("prodImgFile").value="";
     loadProducts();
+    loadCategories();
+    loadProductsForAddonSelect();
+  }catch(err){
+    console.error(err);
+    alert("حدث خطأ أثناء إضافة المنتج. افتح الكونسول للمزيد.");
+  }
+});
+
+function startEditProduct(id, name, price, image, catId){
+  editProdId = Number(id);
+  byId("prodName").value = name;
+  byId("prodPrice").value = price;
+  byId("prodCatSelect").value = catId || "";
+  byId("prodImgUrl").value = image || "";
+  byId("addProdBtn").style.display = "none";
+  byId("updateProdBtn").style.display = "inline-block";
 }
 
+byId("updateProdBtn").addEventListener("click", async ()=>{
+  try{
+    if(!editProdId) return alert("لا يوجد منتج للتعديل");
+    const name = byId("prodName").value.trim();
+    const price = Number(byId("prodPrice").value);
+    const cat = byId("prodCatSelect").value;
+    const fileInput = byId("prodImgFile");
+    const url = byId("prodImgUrl").value.trim();
 
-// -------- تحميل المنتجات --------
-async function loadProducts(){
-    const {data} = await sb.from("products").select("*").order("id",{ascending:false});
-    const list=document.getElementById("productsList");
-    list.innerHTML="";
+    if(!name || !price || !cat) return alert("أكمل البيانات");
 
-    data.forEach(p=>{
-        list.innerHTML += `
-            <div class="product">
-                <strong>${p.name}</strong> — ${p.price} ر.س
-                <br>
-                <img src="${p.image}" onclick="showImg('${p.image}')">
-                <br>
-                <button class="btn edit" onclick='startEdit(${p.id},"${p.name}",${p.price},${p.category_id},"${p.image}")'>تعديل</button>
-                <button class="btn del" onclick="deleteProduct(${p.id})">حذف</button>
-            </div>
-        `;
-    });
-}
+    let imageValue = "";
+    if(fileInput.files && fileInput.files[0]){
+      const file = fileInput.files[0];
+      const filename = Date.now() + "-" + file.name;
+      const { data, error } = await sb.storage.from("menu-images").upload(filename, file);
+      if(error){ console.error("upload error", error); throw error; }
+      imageValue = sb.storage.from("menu-images").getPublicUrl(filename).data.publicUrl;
+    } else if(url){
+      imageValue = url;
+    }
 
+    const payload = { name, price, category_id: Number(cat) };
+    if(imageValue) payload.image = imageValue;
 
-// -------- عرض صورة كاملة --------
-function showImg(src){
-    const popup=document.getElementById("imgPreviewPopup");
-    popup.querySelector("img").src=src;
-    popup.style.display="flex";
-}
+    await sb.from("products").update(payload).eq("id", editProdId);
+    alert("تم التعديل");
+    editProdId = null;
+    byId("addProdBtn").style.display = "inline-block";
+    byId("updateProdBtn").style.display = "none";
+    byId("prodName").value=""; byId("prodPrice").value=""; byId("prodImgUrl").value=""; byId("prodImgFile").value="";
+    loadProducts();
+    loadCategories();
+    loadProductsForAddonSelect();
+  }catch(err){
+    console.error(err);
+    alert("حدث خطأ أثناء التعديل");
+  }
+});
 
-
-// -------- بدء تعديل --------
-function startEdit(id,name,price,cat,img){
-    editID = parseInt(id); // مهم جداً
-    document.getElementById("prodName").value=name;
-    document.getElementById("prodPrice").value=price;
-    document.getElementById("catSelect").value=cat;
-    document.getElementById("preview").src=img;
-    document.getElementById("preview").style.display="block";
-}
-
-
-// -------- حذف منتج --------
 async function deleteProduct(id){
-    if(!confirm("حذف المنتج؟")) return;
-    await sb.from("products").delete().eq("id",id);
-    loadProducts();
+  if(!confirm("حذف المنتج؟")) return;
+  await sb.from("products").delete().eq("id", id);
+  loadProducts();
+  loadCategories();
+  loadProductsForAddonSelect();
 }
 
+/* ---------- Add-ons (إدارة الإضافات) ---------- */
 
-// -------- بحث --------
-document.getElementById("searchBox").oninput=async()=>{
-    const q=document.getElementById("searchBox").value.trim();
-    const box=document.getElementById("searchResults");
-
-    if(q.length < 2){ box.innerHTML=""; return; }
-
-    const {data}=await sb.from("products")
-        .select("*")
-        .ilike("name", `%${q}%`);
-
-    box.innerHTML="";
-
-    data.forEach(p=>{
-        box.innerHTML += `
-            <div class="product">
-                <strong>${p.name}</strong> — ${p.price} ر.س
-                <br>
-                <img src="${p.image}">
-                <br>
-                <button class="btn edit" onclick='startEdit(${p.id},"${p.name}",${p.price},${p.category_id},"${p.image}")'>تعديل</button>
-                <button class="btn del" onclick="deleteProduct(${p.id})">حذف</button>
-            </div>
-        `;
-    });
-};
-
-
-// -------- إعادة ضبط --------
-function resetForm(){
-    document.getElementById("prodName").value="";
-    document.getElementById("prodPrice").value="";
-    document.getElementById("catSelect").value="";
-    document.getElementById("prodImg").value="";
-    document.getElementById("preview").style.display="none";
+async function loadProductsForAddonSelect(){
+  // populate products list
+  const { data } = await sb.from("products").select("id,name").order("id",{ascending:true});
+  const sel = byId("addonProductSelect");
+  sel.innerHTML = "<option value=''>اختر منتج</option>";
+  data.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.name}</option>`);
 }
+
+byId("saveAddonBtn").addEventListener("click", async ()=>{
+  const pid = Number(byId("addonProductSelect").value);
+  const name = byId("addonName").value.trim();
+  const price = Number(byId("addonPrice").value);
+
+  if(!pid || !name || !price) return alert("اختر منتج واملأ اسم الإضافة والسعر");
+
+  await sb.from("add_ons").insert([{ product_id: pid, name, price }]);
+  byId("addonName").value=""; byId("addonPrice").value="";
+  loadAddons(pid);
+});
+
+byId("addonProductSelect").addEventListener("change", (e)=>{
+  const pid = Number(e.target.value);
+  if(pid) loadAddons(pid); else byId("addonsList").innerHTML="";
+});
+
+async function loadAddons(productId){
+  const { data } = await sb.from("add_ons").select("*").eq("product_id", productId).order("id",{ascending:true});
+  const box = byId("addonsList");
+  box.innerHTML = "";
+  if(!data || data.length===0){ box.innerHTML = "<div style='color:#999'>لا توجد إضافات لهذا المنتج</div>"; return; }
+  data.forEach(a=>{
+    box.innerHTML += `<div class="product"><strong>${a.name}</strong> — +${a.price} د.ع
+      <button class="btn del" onclick="deleteAddon(${a.id}, ${a.product_id})">حذف</button>
+    </div>`;
+  });
+}
+
+async function deleteAddon(id, pid){
+  if(!confirm("حذف الإضافة؟")) return;
+  await sb.from("add_ons").delete().eq("id", id);
+  loadAddons(pid);
+}
+
+/* ---------- Initialization ---------- */
+loadCategories();
+loadProducts();
+loadProductsForAddonSelect();
 
 </script>
-
 </body>
 </html>
