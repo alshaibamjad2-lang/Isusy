@@ -14,12 +14,24 @@ input,select{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px
 button{padding:10px 15px;border:none;border-radius:8px;background:#c9a45a;font-weight:bold;cursor:pointer;}
 .preview{max-width:150px;margin-top:10px;border-radius:6px;}
 .item{background:#222;padding:10px;border-radius:6px;margin-bottom:10px;}
+.product{background:#1a1a1a;padding:10px;border-radius:6px;margin-bottom:10px;border:1px solid #333;}
+.btn{padding:6px 10px;font-size:13px;border-radius:6px;margin-left:6px;}
+.del{background:#b30000;color:white;}
+.edit{background:#0077ff;color:white;}
+.search{background:#333;padding:10px;border-radius:8px;margin-bottom:15px;}
 </style>
 </head>
 
 <body>
 
 <h1 style="color:#c9a45a;text-align:center;">لوحة التحكم - المنيو</h1>
+
+<!-- بحث عن منتج -->
+<div class="box">
+  <h2>🔍 بحث عن منتج</h2>
+  <input id="searchBox" placeholder="اكتب اسم المنتج للبحث">
+  <div id="searchResults"></div>
+</div>
 
 <!-- إضافة قسم -->
 <div class="box">
@@ -41,14 +53,11 @@ button{padding:10px 15px;border:none;border-radius:8px;background:#c9a45a;font-w
   <button onclick="addProduct()">إضافة المنتج</button>
 </div>
 
-<!-- عرض الأقسام -->
+<!-- عرض الأقسام + المنتجات -->
 <div class="box">
-  <h2>الأقسام</h2>
+  <h2>الأقسام و المنتجات</h2>
   <div id="catList"></div>
 </div>
-
-<!-- رابط Debug -->
-<a href="debug.html" style="color:#c9a45a;font-size:22px;text-align:center;display:block;margin-top:30px;">🔍 صفحة Debug</a>
 
 <script>
 const client = supabase.createClient(
@@ -64,24 +73,54 @@ document.getElementById("prodImg").onchange = e=>{
 };
 
 async function loadCategories(){
-  const {data} = await client.from("categories").select("*").order("id",{ascending:false});
+  const {data:cats} = await client.from("categories").select("*").order("id",{ascending:false});
+  const {data:prods} = await client.from("products").select("*");
+
   let list = document.getElementById("catList");
   let select = document.getElementById("catSelect");
+
   list.innerHTML="";
   select.innerHTML="";
 
-  data.forEach(c=>{
+  cats.forEach(c=>{
     select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-    list.innerHTML += `<div class="item">${c.name}</div>`;
+
+    let html = `<div class="item">
+      <strong>${c.name}</strong>
+      <button class="btn del" onclick="deleteCategory(${c.id})">حذف القسم</button>
+    `;
+
+    prods.filter(p=>p.category_id==c.id).forEach(p=>{
+      html += `
+        <div class="product">
+          <strong>${p.name}</strong> — ${p.price} ر.س
+          <br><img src="${p.image}" style="width:80px;border-radius:6px;margin-top:5px;">
+          <br>
+          <button class="btn edit" onclick="editProduct(${p.id})">تعديل</button>
+          <button class="btn del" onclick="deleteProduct(${p.id})">حذف</button>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+
+    list.innerHTML += html;
   });
 }
 
 async function addCategory(){
-  let name = document.getElementById("catName").value.trim();
+  let name=document.getElementById("catName").value.trim();
   if(!name) return alert("اكتب الاسم");
 
   await client.from("categories").insert([{name}]);
   document.getElementById("catName").value="";
+  loadCategories();
+}
+
+async function deleteCategory(id){
+  if(!confirm("حذف القسم مع كل المنتجات؟")) return;
+  await client.from("products").delete().eq("category_id",id);
+  await client.from("categories").delete().eq("id",id);
   loadCategories();
 }
 
@@ -112,6 +151,56 @@ async function addProduct(){
 
   loadCategories();
 }
+
+async function deleteProduct(id){
+  if(!confirm("هل أنت متأكد من حذف المنتج؟")) return;
+  await client.from("products").delete().eq("id",id);
+  loadCategories();
+}
+
+async function editProduct(id){
+  const newName = prompt("اسم جديد:");
+  const newPrice = prompt("سعر جديد:");
+
+  if(!newName || !newPrice) return;
+
+  await client.from("products").update({
+    name:newName,
+    price:Number(newPrice)
+  }).eq("id",id);
+
+  loadCategories();
+}
+
+/* البحث عن منتج */
+document.getElementById("searchBox").oninput = async ()=>{
+  let q = document.getElementById("searchBox").value.trim();
+  let resBox = document.getElementById("searchResults");
+
+  if(q.length < 2){
+    resBox.innerHTML="";
+    return;
+  }
+
+  const {data} = await client.from("products")
+    .select("*")
+    .ilike("name", `%${q}%`);
+
+  let html="";
+  data.forEach(p=>{
+    html += `
+      <div class="product">
+        <strong>${p.name}</strong> — ${p.price} ر.س
+        <br><img src="${p.image}" style="width:80px;margin-top:5px;">
+        <br>
+        <button class="btn edit" onclick="editProduct(${p.id})">تعديل</button>
+        <button class="btn del" onclick="deleteProduct(${p.id})">حذف</button>
+      </div>
+    `;
+  });
+
+  resBox.innerHTML = html;
+};
 
 loadCategories();
 </script>
