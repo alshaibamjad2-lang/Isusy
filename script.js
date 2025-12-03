@@ -1,278 +1,174 @@
-// ---------- Supabase (client) ----------
+// ---------------- Supabase Client ----------------
 const SUPABASE_URL = "https://ztwbgqkxmdhpzqhnefty.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0d2JncWt4bWRocHpxaG5lZnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMTQwMDEsImV4cCI6MjA3OTU5MDAwMX0.6W_V9v5VxQpPfv65Ygc51-m7G1Z8sl8fx1B8bWyA6Xg";
 
-// global state
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ---------------- GLOBAL ----------------
 let products = [];
-let categories = [];
-let optionsMap = {}; // product_id -> [add_on objects]
 let cart = [];
+let addonsCache = {}; // نخزن الإضافات هنا
+let currentView = 1;
 
-/* ---------- Helpers ---------- */
-function el(id){ return document.getElementById(id); }
-function esc(s){ return String(s||"").replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// ---------------- Load Data ----------------
+async function loadProducts() {
+  const { data, error } = await db.from("products").select("*");
 
-/* ---------- Load data ---------- */
-async function loadAll(){
-  // categories
-  const { data: cats } = await client.from("categories").select("*").order("id",{ascending:true});
-  categories = cats || [];
-
-  // products
-  const { data: prods } = await client.from("products").select("*").order("id",{ascending:true});
-  products = prods || [];
-
-  // options (add_ons)
-  const prodIds = products.map(p=>p.id);
-  if(prodIds.length>0){
-    const { data: opts } = await client.from("add_ons").select("*").in("product_id", prodIds);
-    optionsMap = {};
-    (opts||[]).forEach(o=>{
-      if(!optionsMap[o.product_id]) optionsMap[o.product_id]=[];
-      optionsMap[o.product_id].push(o);
-    });
-  } else {
-    optionsMap = {};
+  if (error) {
+    console.log("PRODUCTS ERROR:", error);
+    return;
   }
 
-  renderSections();
-  renderMeals();
+  products = data;
+  renderProducts();
+  loadAddons();
 }
 
-/* ---------- Sections rendering (includes 'All') ---------- */
-function renderSections(){
-  const secDiv = el("sections");
-  secDiv.innerHTML = `<button class="section-btn active" data-section="all">الكل</button>`;
-  categories.forEach(c=>{
-    secDiv.innerHTML += `<button class="section-btn" data-section="${c.id}">${esc(c.name)}</button>`;
+async function loadAddons() {
+  const { data } = await db.from("add_ons").select("*");
+
+  addonsCache = {};
+
+  data.forEach((a) => {
+    if (!addonsCache[a.product_id]) addonsCache[a.product_id] = [];
+    addonsCache[a.product_id].push(a);
   });
-  document.querySelectorAll(".section-btn").forEach(btn=>{
-    btn.onclick = () => {
-      document.querySelector(".section-btn.active")?.classList.remove("active");
-      btn.classList.add("active");
-      const sec = btn.dataset.section;
-      renderMeals(sec);
-    };
-  });
+
+  renderProducts(); // إعادة الرسم بعد وصول الإضافات
 }
 
-/* ---------- Build options HTML for a product ---------- */
-function buildOptionsHtml(productId){
-  const opts = optionsMap[productId] || [];
-  if(opts.length===0) return '';
-  let html = `<div style="margin-top:8px;border-top:1px dashed rgba(255,255,255,0.04);padding-top:8px;">`;
-  html += `<div style="font-weight:700;color:var(--gold);margin-bottom:6px;">الإضافات</div>`;
-  opts.forEach(o=>{
-    html += `<label style="display:block;font-size:13px;margin:6px 0;">
-      <input type="checkbox" class="addon-checkbox" data-id="${o.id}" data-product="${o.product_id}" data-name="${esc(o.name)}" data-price="${o.price}">
-      ${esc(o.name)} (+${o.price} د.ع)
-    </label>`;
-  });
-  html += `</div>`;
-  return html;
-}
+// ---------------- Render Products ----------------
+function renderProducts() {
+  const container = document.getElementById("productsContainer");
+  if (!container) return;
 
-/* ---------- Render products (meals) ---------- */
-function renderMeals(filterSection="all"){
-  const mealsDiv = el("meals");
-  mealsDiv.innerHTML = "";
-  let list = products.slice();
-  if(filterSection && filterSection !== "all"){
-    list = list.filter(p => String(p.category_id) === String(filterSection));
-  }
-  if(list.length === 0){ mealsDiv.innerHTML = "<div style='color:#999;padding:18px;'>لا توجد منتجات لعرضها.</div>"; return; }
-  list.forEach(p=>{
-    const img = p.image && p.image.length ? p.image : "https://placehold.co/800x520?text=No+Image";
-    mealsDiv.innerHTML += `
-      <div class="meal" data-id="${p.id}">
-        <div class="img"><img src="${img}" style="width:100%;height:160px;object-fit:cover"></div>
-        <div class="info">
-          <h3>${esc(p.name)}</h3>
-          <div class="price">${p.price} ر.س</div>
-          ${ buildOptionsHtml(p.id) }
-          <button class="add-to-cart" data-id="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}">إضافة للسلة</button>
-        </div>
-      </div>
-    `;
-  });
-  applyViewClass(); // reuse your CSS view toggler if exists
-}
+  container.innerHTML = "";
 
-/* ---------- Cart handling ---------- */
-function updateCartUI(){
-  const itemsDiv = el("cartItems");
-  itemsDiv.innerHTML = "";
-  let total = 0;
-  cart.forEach((it,idx)=>{
-    const addonsHtml = (it.addons && it.addons.length) ? `<div style="font-size:13px;color:#ccc;margin-top:6px;">${it.addons.map(a=>`${esc(a.name)} (+${a.price})`).join(", ")}</div>` : "";
-    const lineTotal = (it.total_price || it.price) * (it.qty || 1);
-    total += lineTotal;
-    itemsDiv.innerHTML += `
-      <div class="cart-item">
-        <div>
-          <strong>${esc(it.name)}</strong><br>
-          <span>${lineTotal.toFixed(2)} ر.س</span>
-          ${addonsHtml}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;gap:6px;">
-            <button class="qty-btn" data-idx="${idx}" data-op="plus">+</button>
-            <button class="qty-btn" data-idx="${idx}" data-op="minus">−</button>
-          </div>
-          <div class="remove" data-idx="${idx}" style="color:var(--gold);cursor:pointer;">حذف</div>
-        </div>
-      </div>
-    `;
-  });
-  el("cartCount").textContent = cart.reduce((s,i)=>s+(i.qty||1),0);
-  el("cartTotal").textContent = total.toFixed(2) + " ر.س";
-}
+  products.forEach((p) => {
+    let addonsHTML = "";
 
-/* delegation for cart buttons */
-document.addEventListener("click", (e)=>{
-  if(e.target.classList.contains("qty-btn")){
-    const idx = Number(e.target.dataset.idx);
-    const op = e.target.dataset.op;
-    if(op==="plus") cart[idx].qty = (cart[idx].qty||1) + 1;
-    if(op==="minus"){ cart[idx].qty = (cart[idx].qty||1) - 1; if(cart[idx].qty<=0) cart.splice(idx,1); }
-    updateCartUI();
-  }
-  if(e.target.classList.contains("remove")){
-    const idx = Number(e.target.dataset.idx);
-    cart.splice(idx,1);
-    updateCartUI();
-  }
-});
+    if (addonsCache[p.id]) {
+      addonsHTML = `
+        <div style="margin-top:10px;color:#c9a45a;font-weight:bold">الإضافات</div>
+      `;
 
-/* ---------- Add to cart with addons ---------- */
-document.addEventListener("click",(e)=>{
-  if(e.target.classList.contains("add-to-cart")){
-    const btn = e.target;
-    const card = btn.closest(".meal");
-    const productId = Number(btn.dataset.id);
-    const basePrice = Number(btn.dataset.price);
-    const name = btn.dataset.name;
-
-    // collect selected addons *inside this card*
-    const selected = [];
-    const checkboxes = card.querySelectorAll(".addon-checkbox");
-    checkboxes.forEach(ch=>{
-      if(ch.checked){
-        selected.push({
-          id: Number(ch.dataset.id),
-          name: ch.dataset.name,
-          price: Number(ch.dataset.price)
-        });
-      }
-    });
-
-    const extrasTotal = selected.reduce((s,a)=> s + Number(a.price), 0);
-    const finalPrice = basePrice + extrasTotal;
-
-    // if same product + same chosen addons exists -> increase qty, else push new
-    const foundIdx = cart.findIndex(it => {
-      if(String(it.id) !== String(productId)) return false;
-      // compare addons by ids
-      const aids1 = (it.addons || []).map(x=>x.id).sort().join(",");
-      const aids2 = selected.map(x=>x.id).sort().join(",");
-      return aids1 === aids2;
-    });
-
-    if(foundIdx >= 0){
-      cart[foundIdx].qty = (cart[foundIdx].qty||1) + 1;
-    } else {
-      cart.push({
-        id: productId,
-        name,
-        price: basePrice,
-        qty: 1,
-        addons: selected,
-        total_price: finalPrice
+      addonsCache[p.id].forEach((a) => {
+        addonsHTML += `
+          <label style="display:flex;align-items:center;margin-top:6px;color:white">
+            <input type="checkbox" data-addon="${p.id}-${a.id}" data-price="${a.price}" style="margin-left:6px">
+            ${a.name} (+${a.price} د.ع)
+          </label>
+        `;
       });
     }
 
-    // animation: try to fly image
-    const img = card.querySelector(".img img");
-    flyToCart(img, ()=>{
-      updateCartUI();
-    });
-  }
-});
+    container.innerHTML += `
+      <div class="product-card view-${currentView}">
+        <img src="${p.image}" class="product-img">
 
-/* fly animation (same as before) */
-function flyToCart(imgEl, done){
-  if(!imgEl){ done && done(); return; }
-  const cartBtn = el("openCart");
-  const a = imgEl.getBoundingClientRect();
-  const b = cartBtn.getBoundingClientRect();
-  const clone = imgEl.cloneNode(true);
-  clone.style.position = "fixed";
-  clone.style.left = a.left + "px";
-  clone.style.top = a.top + "px";
-  clone.style.width = a.width + "px";
-  clone.style.height = a.height + "px";
-  clone.style.transition = "transform .45s ease-out, opacity .45s ease-out";
-  document.body.appendChild(clone);
-  const tx = b.left + b.width/2 - (a.left + a.width/2);
-  const ty = b.top + b.height/2 - (a.top + a.height/2);
-  requestAnimationFrame(()=> {
-    clone.style.transform = `translate(${tx}px,${ty}px) scale(.2)`;
-    clone.style.opacity = "0.5";
+        <div class="product-info">
+          <h3>${p.name}</h3>
+          <p class="price">${p.price} ر.س</p>
+          
+          ${addonsHTML}
+
+          <button class="add-btn" onclick="addToCart(${p.id})">إضافة للسلة</button>
+        </div>
+      </div>
+    `;
   });
-  clone.addEventListener("transitionend", ()=>{
-    clone.remove();
-    done && done();
-  }, { once:true });
 }
 
-/* ---------- Checkout: save order with addons ---------- */
-document.getElementById("checkout")?.addEventListener("click", async ()=>{
-  if(!cart || cart.length===0) return alert("السلة فارغة!");
-  const orderType = document.querySelector('input[name="orderType"]:checked')?.value || 'takeaway';
-  const tableNumEl = document.getElementById('tableNumber');
-  const tableNumber = tableNumEl && tableNumEl.style.display !== "none" ? (tableNumEl.value || null) : null;
+// ---------------- Add To Cart ----------------
+function addToCart(id) {
+  const product = products.find((p) => p.id === id);
+  if (!product) return;
 
-  const itemsPayload = cart.map(it => ({
-    product_id: it.id,
-    name: it.name,
-    price: it.price,
-    qty: it.qty || 1,
-    addons: it.addons || [],
-    total_price: it.total_price || (it.price * (it.qty||1))
-  }));
+  let selectedAddons = [];
+  const checkboxes = document.querySelectorAll(`[data-addon^="${id}-"]`);
 
-  const total = itemsPayload.reduce((s,i)=> s + (i.total_price * i.qty), 0);
+  checkboxes.forEach((c) => {
+    if (c.checked) {
+      let addonId = Number(c.dataset.addon.split("-")[1]);
+      let price = Number(c.dataset.price);
 
-  try{
-    const { data, error } = await client.from('orders').insert([{
-      items: JSON.stringify(itemsPayload),
-      total,
-      type: orderType,
-      table_number: tableNumber ? Number(tableNumber) : null,
-      status: 'pending'
-    }]).select().single();
+      selectedAddons.push({
+        id: addonId,
+        price,
+      });
+    }
+  });
 
-    if(error){ console.error("order save error", error); return alert("خطأ أثناء حفظ الطلب — افتح الكونسول"); }
+  cart.push({
+    ...product,
+    addons: selectedAddons,
+  });
 
-    alert("تم إرسال الطلب بنجاح! رقم الطلب: " + (data?.id || "—"));
-    cart = [];
-    updateCartUI();
-    // close sidebar
-    document.getElementById("cartSidebar")?.classList.remove("open");
-    document.getElementById("cartOverlay")?.classList.remove("show");
-  }catch(err){
-    console.error(err);
-    alert("خطأ غير متوقع أثناء إرسال الطلب");
-  }
-});
-
-/* ---------- Init ---------- */
-document.addEventListener("DOMContentLoaded", ()=>{
-  loadAll();
   updateCartUI();
-});
+  animateCart();
+}
 
+// ---------------- CART UI ----------------
+function updateCartUI() {
+  const cartCount = document.getElementById("cartCount");
+  cartCount.innerText = cart.length;
+}
 
+// ---------------- OPEN / CLOSE CART ----------------
+document.getElementById("cartBtn").onclick = () => {
+  document.getElementById("cartBox").classList.add("open");
+  renderCartDetails();
+};
 
+document.getElementById("closeCart").onclick = () => {
+  document.getElementById("cartBox").classList.remove("open");
+};
 
+function renderCartDetails() {
+  const box = document.getElementById("cartItems");
+  box.innerHTML = "";
+
+  cart.forEach((item, i) => {
+    let addonsText = "";
+
+    if (item.addons.length > 0) {
+      addonsText = "<div class='addons-title'>الإضافات:</div>";
+      item.addons.forEach((a) => {
+        const ad = addonsCache[item.id].find((x) => x.id === a.id);
+        addonsText += `<div class="addon-item">+ ${ad.name} (${ad.price})</div>`;
+      });
+    }
+
+    box.innerHTML += `
+      <div class="cart-row">
+        <strong>${item.name}</strong> — ${item.price} ر.س
+        ${addonsText}
+        <button onclick="removeFromCart(${i})" class="remove">حذف</button>
+      </div>
+    `;
+  });
+}
+
+function removeFromCart(i) {
+  cart.splice(i, 1);
+  updateCartUI();
+  renderCartDetails();
+}
+
+// ---------------- VIEW MODES ----------------
+document.getElementById("changeView").onclick = () => {
+  currentView++;
+  if (currentView > 8) currentView = 1;
+  renderProducts();
+};
+
+// ---------------- Animation ----------------
+function animateCart() {
+  const cartBtn = document.getElementById("cartBtn");
+  cartBtn.classList.add("shake");
+  setTimeout(() => cartBtn.classList.remove("shake"), 600);
+}
+
+// ---------------- INIT ----------------
+loadProducts();
