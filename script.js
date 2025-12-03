@@ -272,3 +272,49 @@ document.addEventListener("DOMContentLoaded", ()=>{
   loadAll();
   updateCartUI();
 });
+
+
+
+
+/* ---------- Open & close cart ---------- */
+document.getElementById("openCart")?.addEventListener("click", () => {
+  document.getElementById("cartSidebar").classList.add("open");
+  document.getElementById("cartOverlay").classList.add("show");
+});
+
+document.getElementById("cartOverlay")?.addEventListener("click", () => {
+  document.getElementById("cartSidebar").classList.remove("open");
+  document.getElementById("cartOverlay").classList.remove("show");
+});
+
+‎/* زر تفريغ السلة */
+document.getElementById("clearCart")?.addEventListener("click", () => {
+  cart = [];
+  updateCartUI();
+});
+
+
+
+/* ---------- Toggle view modes ---------- */
+let viewIndex = 0;
+const views = [
+  { cls:'mode-grid', label:'Grid 2×2' },
+  { cls:'mode-grid3', label:'Grid 3×3' },
+  { cls:'mode-row', label:'صف كامل' },
+  { cls:'mode-slider', label:'Slider أفقي' },
+  { cls:'mode-circle', label:'دائري' },
+  { cls:'mode-mag', label:'مجلة' },
+  { cls:'mode-luxury', label:'فخم' },
+  { cls:'mode-crystal', label:'كريستال' }
+];
+
+function applyViewClass(){
+  const meals = document.getElementById("meals");
+  meals.className = "meals " + views[viewIndex].cls;
+  document.getElementById("viewName").textContent = views[viewIndex].label;
+}
+
+document.getElementById("toggleView")?.addEventListener("click", () => {
+  viewIndex = (viewIndex + 1) % views.length;
+  applyViewClass();
+});
